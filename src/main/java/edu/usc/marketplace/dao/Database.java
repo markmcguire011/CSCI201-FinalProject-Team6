@@ -13,15 +13,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-/**
- * One pool of 10 database connections shared by every request (sections 15 and 16).
- *
- * Opening a MySQL connection takes tens of milliseconds, so the connections are opened once at startup
- * and reused. Tomcat runs each request on its own thread; a thread borrows a connection with
- * getConnection() and gives it back by closing it (try-with-resources). The idle connections wait in a
- * thread-safe BlockingQueue, so two threads can never get the same connection. If all 10 are busy, the
- * next thread waits up to 5 seconds for one to come back.
- */
+
 public final class Database {
     public static final int POOL_SIZE = 10;
     private static final long WAIT_SECONDS = 5;
@@ -111,11 +103,7 @@ public final class Database {
         T run(Connection c) throws SQLException;
     }
 
-    /** Number of connections not in use right now. */
-    public int idleCount() {
-        return idle.size();
-    }
-
+  
     /** Called when Tomcat stops the application. */
     public void shutdown() {
         closed = true;

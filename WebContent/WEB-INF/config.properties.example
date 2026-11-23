@@ -1,10 +1,4 @@
-# Copy this file to config.properties (same folder) and fill in your own values.
-# config.properties holds passwords, so add it to .gitignore and never push it to GitHub.
-
+# Copy to config.properties and use your own MySQL login.
 db.url=jdbc:mysql://localhost:3306/usc_marketplace?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Los_Angeles
-db.user=marketplace_app
+db.user=root
 db.password=ChangeThisPassword1
-
-# Optional: where uploaded photos and payment proofs are saved.
-# If left out, a usc-marketplace-uploads folder is created in your home folder.
-# upload.dir=C:/marketplace/uploads

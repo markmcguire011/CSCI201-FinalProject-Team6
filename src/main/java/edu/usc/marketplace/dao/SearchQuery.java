@@ -1,9 +1,6 @@
 package edu.usc.marketplace.dao;
 
-/**
- * The search box and filters of the Browse page. Every field is optional.
- * Example: new SearchQuery().keyword("lamp").maxPrice(30).page(2)
- */
+
 public class SearchQuery {
     public static final int PAGE_SIZE = 20;
 
@@ -25,7 +22,6 @@ public class SearchQuery {
     public SearchQuery sort(String v) { sort = v == null ? "newest" : v; return this; }
     public SearchQuery page(int v) { page = Math.max(1, v); return this; }
 
-    public int getPage() { return page; }
 
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.trim();
