@@ -1,0 +1,285 @@
+/*
+ * layout.css: shared layout for every page (section 16).
+ * Include it before a page's own stylesheet:  <link rel="stylesheet" href="css/layout.css">
+ *
+ * Screen sizes:
+ *   Phones (360 px and up): navigation wraps onto two rows, filters above the feed, 1 column
+ *   Tablets (600 to 819 px): filters above the feed, 3 columns
+ *   Laptops and desktops (820 px and up): filters on the left, 4 columns, content at most 1180 px wide
+ */
+
+:root {
+  --cardinal: #990000;
+  --gold: #ffcc00;
+  --text: #1f1f1f;
+  --muted: #5f5f5f;
+  --line: #e2e2e2;
+  --surface: #ffffff;
+  --page: #f6f6f4;
+  --error: #b00020;
+  --success: #1e6b3a;
+  --radius: 10px;
+  --max-width: 1180px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ----- navigation bar ----- */
+
+#site-nav {
+  background: var(--cardinal);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.nav {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  flex-wrap: wrap;            /* phones: links move to a second row */
+  align-items: center;
+  gap: 4px 16px;
+}
+
+.nav-brand {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  margin-right: auto;
+  padding: 6px 0;
+}
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-link {
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.nav-active {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.nav-button {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.nav-avatar {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.nav-avatar.nav-active,
+.nav-avatar:hover {
+  background: #ffe066;
+}
+
+.nav-badge {
+  background: var(--gold);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+@media (max-width: 599px) {
+  .nav-brand {
+    flex-basis: 100%;         /* first row: name, second row: links */
+  }
+}
+
+/* ----- page width and Browse layout ----- */
+
+.page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.browse {
+  display: grid;
+  grid-template-columns: 1fr;   /* phones and tablets: filters above the feed */
+  gap: 16px;
+}
+
+.filters {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.feed {
+  display: grid;
+  grid-template-columns: 1fr;   /* phones: 1 column */
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .feed {
+    grid-template-columns: repeat(3, 1fr);   /* tablets: 3 columns */
+  }
+}
+
+@media (min-width: 820px) {
+  .browse {
+    grid-template-columns: 220px 1fr;        /* filters on the left */
+    align-items: start;
+  }
+
+  .filters {
+    position: sticky;
+    top: 72px;
+  }
+
+  .feed {
+    grid-template-columns: repeat(4, 1fr);   /* laptops and desktops: 4 columns */
+  }
+}
+
+/* ----- listing cards ----- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--line);
+}
+
+.card-body {
+  padding: 10px 12px 12px;
+}
+
+.card-title {
+  font-weight: 600;
+  margin: 0 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-price {
+  font-weight: 700;
+}
+
+.card-meta {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ----- forms and errors ----- */
+
+.field-error,
+.form-error {
+  color: var(--error);
+  font-size: 14px;
+  margin: 4px 0 0;
+}
+
+.form-error {
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+[aria-invalid="true"] {
+  border-color: var(--error) !important;
+  outline-color: var(--error);
+}
+
+/* ----- notices (toast.js) ----- */
+
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.toast-success {
+  background: var(--success);
+}
+
+.toast-error {
+  background: var(--error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: none;
+  }
+}
