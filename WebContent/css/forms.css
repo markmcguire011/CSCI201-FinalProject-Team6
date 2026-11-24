@@ -1,0 +1,316 @@
+/*
+ * forms.css: forms, buttons and dialogs for the Register, Verify and Admin pages and the Report dialog (section 3).
+ * Include it after layout.css:  <link rel="stylesheet" href="css/forms.css">
+ */
+
+/* ----- form card ----- */
+
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 440px;
+  margin: 24px auto;
+}
+
+.form-card h1 {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+
+.form-intro {
+  color: var(--muted);
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label,
+.field legend {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+fieldset.field {
+  border: 0;
+  padding: 0;
+  margin-left: 0;
+  margin-right: 0;
+  min-width: 0;
+}
+
+.field input[type="text"],
+.field input[type="email"],
+.field input[type="password"],
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #b9b9b9;
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+  color: var(--text);
+}
+
+.field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.code-box:focus-visible {
+  outline: 2px solid var(--cardinal);
+  outline-offset: 1px;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 4px 0 0;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.choice-row label,
+.choice-list label {
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.choice-list {
+  display: grid;
+  gap: 6px;
+}
+
+.counter {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+  margin: 4px 0 0;
+}
+
+.counter-over {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.form-footer {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.form-footer a {
+  color: var(--cardinal);
+}
+
+/* ----- buttons ----- */
+
+.btn {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn:focus-visible,
+.link-button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--cardinal);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #7a0000;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--text);
+  border-color: #b9b9b9;
+}
+
+.btn-secondary:hover {
+  background: #f1f1f1;
+}
+
+.btn-danger {
+  background: #fff;
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.btn-danger:hover {
+  background: #fdecee;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* A button that looks like a link, e.g. "Send a new code". */
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--cardinal);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:disabled {
+  color: var(--muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* ----- Verify page: six boxes for the code ----- */
+
+.code-boxes {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin: 8px 0 4px;
+}
+
+.code-box {
+  width: 100%;
+  max-width: 56px;
+  min-width: 0;
+  aspect-ratio: 1 / 1.15;
+  text-align: center;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 700;
+  border: 1px solid #b9b9b9;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 0;
+}
+
+/* ----- Report dialog ----- */
+
+.report-dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: min(440px, calc(100vw - 32px));
+  color: var(--text);
+}
+
+.report-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.report-dialog h2 {
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ----- Admin Dashboard ----- */
+
+.page-title {
+  font-size: 24px;
+  margin: 8px 0 4px;
+}
+
+.page-note {
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+.report-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.report-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.report-card h2 {
+  font-size: 18px;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.report-tag {
+  display: inline-block;
+  background: #fdecee;
+  color: var(--error);
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.report-comment {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.report-meta {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.empty-note {
+  background: var(--surface);
+  border: 1px dashed #b9b9b9;
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}

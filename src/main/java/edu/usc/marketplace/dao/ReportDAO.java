@@ -46,6 +46,20 @@ public class ReportDAO extends BaseDAO<Report> {
         }
     }
 
+    /** True if this user already reported this listing or user (section 3). */
+    public boolean exists(int reporterId, String targetType, int targetId) {
+        return queryLong("SELECT COUNT(*) FROM reports WHERE reporter_id = ? AND target_type = ? AND target_id = ?",
+                reporterId, targetType, targetId) > 0;
+    }
+
+    /**
+     * Resolving a report, step 1 (inside Database.inTransaction): locks the report row until the
+     * transaction ends, so two administrators cannot both act on the same report.
+     */
+    public Report findForUpdate(Connection c, int reportId) throws SQLException {
+        return queryOne(c, "SELECT * FROM reports WHERE report_id = ? FOR UPDATE", reportId);
+    }
+
     public Report findById(int reportId) {
         return queryOne("SELECT * FROM reports WHERE report_id = ?", reportId);
     }

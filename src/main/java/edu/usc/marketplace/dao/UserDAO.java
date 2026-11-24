@@ -3,6 +3,7 @@ package edu.usc.marketplace.dao;
 import edu.usc.marketplace.exception.ConflictException;
 import edu.usc.marketplace.model.User;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -46,6 +47,11 @@ public class UserDAO extends BaseDAO<User> {
         return queryOne("SELECT * FROM users WHERE email = ?", email.trim().toLowerCase());
     }
 
+    /** True if an account already uses this email (section 3, Registering). */
+    public boolean emailExists(String email) {
+        return queryLong("SELECT COUNT(*) FROM users WHERE email = ?", email.trim().toLowerCase()) > 0;
+    }
+
     /** Creates an unverified account and returns its id. */
     public int insert(User u) {
         try {
@@ -86,5 +92,10 @@ public class UserDAO extends BaseDAO<User> {
     /** null removes the suspension. */
     public void suspendUntil(int userId, LocalDateTime until) {
         update("UPDATE users SET suspended_until = ? WHERE user_id = ?", until, userId);
+    }
+
+    /** Inside a transaction, e.g. resolving a report (section 3). */
+    public void suspendUntil(Connection c, int userId, LocalDateTime until) throws SQLException {
+        update(c, "UPDATE users SET suspended_until = ? WHERE user_id = ?", until, userId);
     }
 }

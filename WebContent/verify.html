@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verify your email · USC Marketplace</title>
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/forms.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main class="page">
+    <form id="verify-form" class="form-card" novalidate>
+      <h1>Verify your email</h1>
+      <p class="form-intro" id="verify-intro">Enter the 6-digit code we emailed you. It expires after 15 minutes.</p>
+
+      <div class="code-boxes" id="code-boxes" role="group" aria-label="6-digit code">
+        <input class="code-box" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="Digit 1">
+        <input class="code-box" type="text" inputmode="numeric" aria-label="Digit 2">
+        <input class="code-box" type="text" inputmode="numeric" aria-label="Digit 3">
+        <input class="code-box" type="text" inputmode="numeric" aria-label="Digit 4">
+        <input class="code-box" type="text" inputmode="numeric" aria-label="Digit 5">
+        <input class="code-box" type="text" inputmode="numeric" aria-label="Digit 6">
+      </div>
+      <p class="form-error" id="verify-error" role="alert" hidden></p>
+
+      <button type="submit" class="btn btn-primary btn-block" id="verify-button" style="margin-top: 16px">Verify</button>
+
+      <p class="form-footer">
+        Didn't get it?
+        <button type="button" class="link-button" id="resend-button">Send a new code</button>
+      </p>
+    </form>
+  </main>
+
+  <script src="js/toast.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/verify.js"></script>
+</body>
+</html>

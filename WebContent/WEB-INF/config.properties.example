@@ -2,3 +2,12 @@
 db.url=jdbc:mysql://localhost:3306/usc_marketplace?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Los_Angeles
 db.user=root
 db.password=ChangeThisPassword1
+
+# Email for the 6-digit verification codes (section 3). Leave these out to run without email:
+# the code is then written to the Tomcat console instead of being sent.
+# For Gmail, mail.password is an "app password" (Google Account > Security > App passwords), not your normal password.
+#mail.host=smtp.gmail.com
+#mail.port=587
+#mail.user=youraccount@gmail.com
+#mail.password=your-app-password
+#mail.from=USC Marketplace <youraccount@gmail.com>

@@ -38,6 +38,16 @@ public class VerificationDAO extends BaseDAO<VerificationDAO.Code> {
                 userId, code, expiresAt);
     }
 
+    /**
+     * Same, but the sent time comes from the caller instead of MySQL's clock, so the expiry and the
+     * one-per-minute resend limit are measured on the same clock (section 3).
+     */
+    public void save(int userId, String code, LocalDateTime expiresAt, LocalDateTime lastSentAt) {
+        update("INSERT INTO verification_codes (user_id, code, expires_at, last_sent_at) VALUES (?, ?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE code = VALUES(code), expires_at = VALUES(expires_at), last_sent_at = VALUES(last_sent_at)",
+                userId, code, expiresAt, lastSentAt);
+    }
+
     public void delete(int userId) {
         update("DELETE FROM verification_codes WHERE user_id = ?", userId);
     }

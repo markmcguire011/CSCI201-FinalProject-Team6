@@ -1,6 +1,7 @@
 package edu.usc.marketplace.app;
 
 import edu.usc.marketplace.dao.Database;
+import edu.usc.marketplace.service.Mailer;
 import edu.usc.marketplace.storage.FileStorageService;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
@@ -29,6 +30,7 @@ import java.util.logging.Logger;
  *   db.user=marketplace_app
  *   db.password=...
  *   upload.dir=C:/marketplace/uploads      (optional; default: a usc-marketplace-uploads folder in the user's home folder)
+ *   mail.host, mail.port, mail.user, mail.password, mail.from      (optional; see Mailer)
  */
 @WebListener
 public class AppStartup implements ServletContextListener {
@@ -48,6 +50,11 @@ public class AppStartup implements ServletContextListener {
             throw new IllegalStateException("Could not connect to MySQL. Check that MySQL is running and that db.url, "
                     + "db.user and db.password in WEB-INF/config.properties are correct. (" + e.getMessage() + ")", e);
         }
+
+        Mailer mailer = new Mailer(config);
+        Mailer.init(mailer);
+        LOG.info(mailer.isConfigured() ? "Email is set up: verification codes are sent with " + config.getProperty("mail.host").trim() + "."
+                : "Email is not set up (no mail.host in config.properties): verification codes are written to this console instead.");
 
         String uploadDir = config.getProperty("upload.dir",
                 Paths.get(System.getProperty("user.home"), "usc-marketplace-uploads").toString());
