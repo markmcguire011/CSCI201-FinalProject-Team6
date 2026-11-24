@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   bio                 VARCHAR(300),
   photo_path          VARCHAR(255),
   failed_login_count  INT          NOT NULL DEFAULT 0,
+  first_failed_at	  DATETIME,
   locked_until        DATETIME,
   suspended_until     DATETIME,
   created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
