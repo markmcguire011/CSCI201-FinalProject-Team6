@@ -3,10 +3,11 @@ package edu.usc.marketplace.model;
 import java.time.LocalDateTime;
 
 /**
- * A logged-in user, as the rest of the app sees them: who they are, whether their email is verified,
- * and whether they are suspended. Built from a row of the users table with Member.from(user).
+ * A logged-in user, as the rest of the app sees them (sections 3 and 4): who they are, whether their
+ * email is verified, and whether they are suspended. Built from a row of the users table with
+ * Member.from(user), which returns an Administrator when the user has the ADMIN role.
  */
-public class Member {
+public class Member extends Visitor {
     private final int id;
     private final String fullName;
     private final String email;
@@ -24,10 +25,23 @@ public class Member {
     }
 
     public static Member from(User u) {
-        Member m = new Member(u.getId(), u.getFullName(), u.getEmail(), AccountType.valueOf(u.getAccountType()), u.isVerified());
-        m.role = u.isAdmin() ? Role.ADMIN : Role.USER;
+        AccountType type = AccountType.valueOf(u.getAccountType());
+        Member m = u.isAdmin()
+                ? new Administrator(u.getId(), u.getFullName(), u.getEmail(), type)
+                : new Member(u.getId(), u.getFullName(), u.getEmail(), type, u.isVerified());
         m.suspendedUntil = u.getSuspendedUntil();
         return m;
+    }
+
+    /** UNVERIFIED until the email is verified, then MEMBER. */
+    @Override
+    public AccessLevel getAccessLevel() {
+        return verified ? AccessLevel.MEMBER : AccessLevel.UNVERIFIED;
+    }
+
+    /** True if this member is the owner with the given user id. */
+    public boolean owns(int ownerId) {
+        return id == ownerId;
     }
 
     public int getId() {

@@ -1,6 +1,12 @@
 package edu.usc.marketplace.servlet;
 
+import edu.usc.marketplace.dao.UserDAO;
 import edu.usc.marketplace.exception.AuthException;
+import edu.usc.marketplace.model.Administrator;
+import edu.usc.marketplace.model.Guest;
+import edu.usc.marketplace.model.Member;
+import edu.usc.marketplace.model.User;
+import edu.usc.marketplace.model.Visitor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
@@ -15,6 +21,9 @@ public final class SessionUtil {
     public static final int TIMEOUT_SECONDS = 30 * 60;   // 30 minutes without activity ends the session
 
     public static final String LOGIN_REQUIRED = "Login required";
+
+    /** Request attribute where AuthFilter leaves the visitor it checked, for the servlet to use. */
+    public static final String REQUEST_VISITOR = "visitor";
 
     private SessionUtil() {
     }
@@ -58,6 +67,49 @@ public final class SessionUtil {
     public static void markVerified(HttpServletRequest req) {
         HttpSession session = req.getSession(false);
         if (session != null) session.setAttribute(SESSION_VERIFIED, true);
+    }
+
+    /**
+     * Who is making this request, built from the session alone: a Guest if nobody is logged in, otherwise
+     * a Member (or Administrator) with the id, role and verified flag saved at login. The name, email and
+     * suspension are not kept in the session; use loadVisitor() when those are needed.
+     */
+    public static Visitor currentVisitor(HttpServletRequest req) {
+        Integer id = currentUserId(req);
+        if (id == null) return Guest.INSTANCE;
+        HttpSession session = req.getSession(false);
+        if ("ADMIN".equals(session.getAttribute(BaseServlet.SESSION_ROLE))) {
+            return new Administrator(id, null, null, null);
+        }
+        return new Member(id, null, null, null, isVerified(req));
+    }
+
+    /**
+     * Who is making this request, with the user read fresh from the database. A suspension, a newly
+     * verified email or a changed role therefore counts on the very next request, without a new login.
+     * If the account no longer exists, the session is ended and the visitor is a Guest.
+     */
+    public static Visitor loadVisitor(HttpServletRequest req, UserDAO users) {
+        Integer id = currentUserId(req);
+        if (id == null) return Guest.INSTANCE;
+        User user = users.findById(id);
+        if (user == null) {
+            endSession(req);
+            return Guest.INSTANCE;
+        }
+        HttpSession session = req.getSession(false);
+        session.setAttribute(BaseServlet.SESSION_ROLE, user.getRole());
+        session.setAttribute(SESSION_VERIFIED, user.isVerified());
+        return Member.from(user);
+    }
+
+    /**
+     * The visitor AuthFilter already checked for this request, so servlets do not read the user twice.
+     * Falls back to the session for requests the filter let through without a lookup (browsing).
+     */
+    public static Visitor visitor(HttpServletRequest req) {
+        Object checked = req.getAttribute(REQUEST_VISITOR);
+        return checked instanceof Visitor ? (Visitor) checked : currentVisitor(req);
     }
 
     public static void endSession(HttpServletRequest req) {
