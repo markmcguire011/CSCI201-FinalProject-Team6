@@ -32,6 +32,7 @@ public class UserDAO extends BaseDAO<User> {
         u.setBio(rs.getString("bio"));
         u.setPhotoPath(rs.getString("photo_path"));
         u.setFailedLoginCount(rs.getInt("failed_login_count"));
+        u.setFirstFailedAt(time(rs, "first_failed_at"));
         u.setLockedUntil(time(rs, "locked_until"));
         u.setSuspendedUntil(time(rs, "suspended_until"));
         u.setCreatedAt(time(rs, "created_at"));
@@ -82,7 +83,12 @@ public class UserDAO extends BaseDAO<User> {
     }
 
     public void resetFailedLogins(int userId) {
-        update("UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE user_id = ?", userId);
+        update(
+            "UPDATE users SET failed_login_count = 0, " +
+            "first_failed_at = NULL, locked_until = NULL " +
+            "WHERE user_id = ?",
+            userId
+        );
     }
 
     public void lockUntil(int userId, LocalDateTime until) {
@@ -98,4 +104,29 @@ public class UserDAO extends BaseDAO<User> {
     public void suspendUntil(Connection c, int userId, LocalDateTime until) throws SQLException {
         update(c, "UPDATE users SET suspended_until = ? WHERE user_id = ?", until, userId);
     }
+    
+    /**
+     * Saves the failed-login state for an account.
+     * Used by LoginService to enforce the 10-minute
+     * attempt window and 15-minute lockout.
+     */
+    public void saveFailures(int userId, int count,
+            LocalDateTime firstFailedAt, LocalDateTime lockedUntil) {
+
+        update(
+            "UPDATE users SET failed_login_count = ?, " +
+            "first_failed_at = ?, locked_until = ? " +
+            "WHERE user_id = ?",
+            count, firstFailedAt, lockedUntil, userId
+        );
+    }
+
+    /**
+     * Clears failed-login tracking after successful authentication.
+     */
+    public void clearFailures(int userId) {
+        resetFailedLogins(userId);
+    }
 }
+
+

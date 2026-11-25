@@ -13,6 +13,7 @@ public class User extends BaseEntity {
     private String bio;
     private String photoPath;
     private transient int failedLoginCount;
+    private transient LocalDateTime firstFailedAt;
     private transient LocalDateTime lockedUntil;
     private LocalDateTime suspendedUntil;
 
@@ -86,6 +87,14 @@ public class User extends BaseEntity {
 
     public void setFailedLoginCount(int failedLoginCount) {
         this.failedLoginCount = failedLoginCount;
+    }
+    
+    public LocalDateTime getFirstFailedAt() {
+        return firstFailedAt;
+    }
+
+    public void setFirstFailedAt(LocalDateTime firstFailedAt) {
+        this.firstFailedAt = firstFailedAt;
     }
 
     public LocalDateTime getLockedUntil() {
