@@ -3,20 +3,40 @@ package section6;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import edu.usc.marketplace.exception.ValidationException;
+import edu.usc.marketplace.model.AccountType;
 import edu.usc.marketplace.model.EditProfileForm;
+import edu.usc.marketplace.model.Member;
 import edu.usc.marketplace.model.UploadedFile;
+import edu.usc.marketplace.model.User;
+import edu.usc.marketplace.service.ProfileService;
 import edu.usc.marketplace.service.Validator;
+import edu.usc.marketplace.storage.FileStorageService;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
+
+import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Testing Plan 6b: Editing a profile. Each test starts from a valid form and changes one field.
+ * Tests U9 to U13 save through ProfileService with a fake UserDAO and a real FileStorageService in a temporary folder.
  */
 class EditingProfileTest {
     private static final int FIVE_MB = 5 * 1024 * 1024;
@@ -132,5 +152,112 @@ class EditingProfileTest {
         form.photo = new UploadedFile("tiny.jpg", new byte[] {(byte) 0xFF, (byte) 0xD8});
         Map<String, String> tiny = assertDoesNotThrow(() -> Validator.validateProfile(form));
         assertEquals("Photo must be a JPG or PNG file.", tiny.get("photo"));
+    }
+
+    // ----- saving through ProfileService (6b-U9 to U13) -----
+
+    @TempDir
+    Path uploads;
+
+    private final Member tommy = new Member(10, "Tommy Trojan", "ttrojan@usc.edu", AccountType.STUDENT, true);
+
+    /** A service whose user 10 has the photo old.jpg, which exists in the public upload folder. */
+    private ProfileService serviceWithOldPhoto(FakeUserDAO users) throws IOException {
+        FileStorageService storage = new FileStorageService(uploads);
+        Files.write(publicDir().resolve("old.jpg"), realJpg());
+
+        User u = new User();
+        u.setId(10);
+        u.setFullName("Tommy Trojan");
+        u.setEmail("ttrojan@usc.edu");
+        u.setAccountType("STUDENT");
+        u.setPhotoPath("old.jpg");
+        u.setCreatedAt(LocalDateTime.of(2026, 10, 5, 9, 30));
+        users.users.put(10, u);
+        return new ProfileService(users, new FakeListingDAO(), storage);
+    }
+
+    private Path publicDir() {
+        return uploads.resolve("public");
+    }
+
+    private List<String> publicFiles() throws IOException {
+        try (Stream<Path> files = Files.list(publicDir())) {
+            return files.map(p -> p.getFileName().toString()).sorted().toList();
+        }
+    }
+
+    /** A small picture that ImageIO can open, as FileStorageService.saveImage requires. */
+    private static byte[] realJpg() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB), "jpg", out);
+        return out.toByteArray();
+    }
+
+    /** 6b-U9 */
+    @Test
+    void nameAndBioAreTrimmedAndPhotoIsKept() throws IOException {
+        FakeUserDAO users = new FakeUserDAO();
+        ProfileService service = serviceWithOldPhoto(users);
+
+        service.updateProfile(tommy, new EditProfileForm("  Tommy T.  ", "  New bio ", null, false));
+        assertEquals("Tommy T.", users.savedName);
+        assertEquals("New bio", users.savedBio);
+        assertEquals("old.jpg", users.savedPhotoPath);
+        assertEquals(List.of("old.jpg"), publicFiles());
+
+        service.updateProfile(tommy, new EditProfileForm("Tommy T.", "   ", null, false));
+        assertNull(users.savedBio);   // a blank bio is stored as no bio
+    }
+
+    /** 6b-U10 */
+    @Test
+    void newPhotoIsSavedAndOldOneDeleted() throws IOException {
+        FakeUserDAO users = new FakeUserDAO();
+        ProfileService service = serviceWithOldPhoto(users);
+
+        service.updateProfile(tommy, new EditProfileForm("Tommy", null, new UploadedFile("me.jpg", realJpg()), false));
+        String saved = users.savedPhotoPath;
+        assertTrue(saved.endsWith(".jpg") && !saved.equals("old.jpg"));
+        assertTrue(Files.exists(publicDir().resolve(saved)));
+        assertFalse(Files.exists(publicDir().resolve("old.jpg")));
+    }
+
+    /** 6b-U11 */
+    @Test
+    void failedUpdateKeepsOldPhotoAndRemovesNewOne() throws IOException {
+        FakeUserDAO users = new FakeUserDAO();
+        ProfileService service = serviceWithOldPhoto(users);
+        users.failUpdate = new RuntimeException("The database is down");
+
+        RuntimeException e = assertThrows(RuntimeException.class, () -> service.updateProfile(tommy,
+                new EditProfileForm("Tommy", null, new UploadedFile("me.jpg", realJpg()), false)));
+        assertSame(users.failUpdate, e);
+        assertEquals(List.of("old.jpg"), publicFiles());
+    }
+
+    /** 6b-U12 */
+    @Test
+    void invalidFormChangesNothing() throws IOException {
+        FakeUserDAO users = new FakeUserDAO();
+        ProfileService service = serviceWithOldPhoto(users);
+
+        ValidationException e = assertThrows(ValidationException.class, () -> service.updateProfile(tommy,
+                new EditProfileForm("  ", null, new UploadedFile("me.jpg", realJpg()), false)));
+        assertTrue(e.getFieldErrors().containsKey("fullName"));
+        assertEquals(0, users.updateCalls);
+        assertEquals(List.of("old.jpg"), publicFiles());
+    }
+
+    /** 6b-U13 */
+    @Test
+    void removingThePhotoStoresNullAndDeletesTheFile() throws IOException {
+        FakeUserDAO users = new FakeUserDAO();
+        ProfileService service = serviceWithOldPhoto(users);
+
+        service.updateProfile(tommy, new EditProfileForm("Tommy", null, null, true));
+        assertEquals(1, users.updateCalls);
+        assertNull(users.savedPhotoPath);
+        assertEquals(List.of(), publicFiles());
     }
 }
