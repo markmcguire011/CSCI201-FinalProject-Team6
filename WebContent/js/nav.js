@@ -16,7 +16,7 @@ const Nav = (() => {
   // Page addresses. Change them here if a page has a different file name.
   const PAGES = {
     browse: "index.html",
-    sell: "sell.html",
+    sell: "listing-form.html",
     messages: "messages.html",
     saved: "saved.html",
     profile: "profile.html",

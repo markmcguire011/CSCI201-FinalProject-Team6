@@ -31,7 +31,9 @@ import java.util.Map;
  *   GET  /api/listings/{id}   anyone: one listing (ListingDetail), for the Edit Listing form and the pop-up.
  *   POST /api/listings/{id}   the seller edits it. The same fields as creating, plus "version" (from the GET),
  *                             "keepPhotoIds" repeated once per kept photo in display order, and the new files
- *                             named "newPhotos". Answers 200 with the ListingDetail.
+ *                             named "newPhotos". Optionally "photoOrder", repeated in display order, each
+ *                             "keep:<photo id>" or "new:<index into newPhotos>"; without it the kept photos come
+ *                             first, then the new ones. Answers 200 with the ListingDetail.
  *
  * AuthFilter has already refused guests, unverified and suspended accounts for both POSTs (SELL and EDIT_OWN).
  *
@@ -97,6 +99,8 @@ public class ListingServlet extends BaseServlet {
         } else {
             form.version = version(req);
             form.keepPhotoIds = keepPhotoIds(req);
+            String[] order = req.getParameterValues("photoOrder");
+            form.photoOrder = order == null ? null : List.of(order);
             sendJson(resp, listings.update(member, id, form));
         }
     }

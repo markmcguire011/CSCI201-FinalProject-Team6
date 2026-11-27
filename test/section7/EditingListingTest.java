@@ -1,5 +1,6 @@
 package section7;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -41,6 +42,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Testing Plan 7d: Editing a listing. Listing 31 belongs to Sam (user 7), is Available with version 1, and has
@@ -355,5 +357,84 @@ class EditingListingTest {
         listings.stored.get(31).setDeletedByAdmin(true);
         NotFoundException e = assertThrows(NotFoundException.class, () -> service.getListing(sam, 31));
         assertEquals("Listing not found.", e.getMessage());
+    }
+
+    // ----- photoOrder: new photos can go anywhere, including first (the cover) -----
+
+    /** 7d-W2 (white box): photoOrder puts a new photo first. */
+    @Test
+    void photoOrderPutsANewPhotoFirst() throws IOException {
+        ListingForm form = form(86, 88);
+        form.newPhotos = List.of(jpg("d.jpg"));
+        form.photoOrder = List.of("new:0", "keep:86", "keep:88");
+
+        ListingDetail result = service.update(sam, 31, form);
+        String d = photos.replacedPaths.get(0);
+        assertEquals(List.of(d, "a.jpg", "c.jpg"), photos.replacedPaths);
+        assertFalse(List.of("a.jpg", "b.jpg", "c.jpg").contains(d));
+        assertEquals("photos/" + d, result.photos().get(0).url());
+        assertFalse(Files.exists(publicDir().resolve("b.jpg")));
+    }
+
+    /** 7d-W3 (white box): photoOrder mixes kept and new photos; the new ones are told apart by their bytes. */
+    @Test
+    void photoOrderMixesKeptAndNewPhotos() throws IOException {
+        UploadedFile d = new UploadedFile("d.jpg", jpgBytes(14));
+        UploadedFile e = new UploadedFile("e.jpg", jpgBytes(16));
+        ListingForm form = form(88, 86);
+        form.newPhotos = List.of(d, e);
+        form.photoOrder = List.of("keep:88", "new:1", "keep:86", "new:0");
+
+        service.update(sam, 31, form);
+        List<String> saved = photos.replacedPaths;
+        assertEquals("c.jpg", saved.get(0));
+        assertEquals("a.jpg", saved.get(2));
+        assertArrayEquals(e.bytes(), Files.readAllBytes(publicDir().resolve(saved.get(1))));
+        assertArrayEquals(d.bytes(), Files.readAllBytes(publicDir().resolve(saved.get(3))));
+    }
+
+    /** 7d-W4 (white box): a bad token, a missing entry or a duplicate is "out of date", and nothing is written. */
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "keep:86,new:0,kept:88",    // bad token
+            "keep:86,new:0,keep:87",    // a photo that is not being kept
+            "keep:86,new:0,new:1",      // a new photo that was not sent
+            "keep:86,new:0,keep:x",     // not a number
+            "keep:86,new:0",            // keep:88 missing
+            "keep:86,new:0,keep:88,keep:88",   // too many
+            "keep:86,new:0,new:0"       // a duplicate (and keep:88 missing)
+    })
+    void badPhotoOrderIsOutOfDate(String order) throws IOException {
+        ListingForm form = form(86, 88);
+        form.newPhotos = List.of(jpg("d.jpg"));
+        form.photoOrder = List.of(order.split(","));
+
+        ValidationException e = assertThrows(ValidationException.class, () -> service.update(sam, 31, form));
+        assertEquals(Map.of("photos", OUT_OF_DATE), e.getFieldErrors());
+        assertNothingWritten();
+    }
+
+    /** 7d-W5 (white box): without photoOrder the kept photos come first, then the new ones. */
+    @Test
+    void withoutPhotoOrderKeptPhotosComeFirst() throws IOException {
+        ListingForm form = form(88);
+        form.newPhotos = List.of(jpg("d.jpg"));
+        form.photoOrder = null;
+
+        service.update(sam, 31, form);
+        assertEquals("c.jpg", photos.replacedPaths.get(0));
+        assertEquals(2, photos.replacedPaths.size());
+    }
+
+    /** 7d-W6 (white box): an edit made from an older version is "just changed", even though its photo ids are stale too. */
+    @Test
+    void olderVersionIsAConflictBeforeThePhotoCheck() throws IOException {
+        listings.stored.get(31).setVersion(2);   // someone saved in the meantime (and the photos got new ids)
+        ListingForm form = form(86, 500);
+        form.newPhotos = List.of(jpg("d.jpg"));
+
+        ConflictException e = assertThrows(ConflictException.class, () -> service.update(sam, 31, form));
+        assertEquals("This listing was just changed. Refresh and try again.", e.getMessage());
+        assertNothingWritten();
     }
 }

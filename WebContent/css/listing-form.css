@@ -1,0 +1,218 @@
+/*
+ * listing-form.css: the Sell / Edit Listing page (section 7).
+ * Include it after layout.css, forms.css and profile.css (it reuses .field-label, .label-note,
+ * .visually-hidden and .form-buttons from profile.css).
+ */
+
+.listing-form-card {
+  max-width: 640px;
+}
+
+/* Two fields side by side on wider screens, stacked on phones. */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 16px;
+}
+
+@media (min-width: 600px) {
+  .field-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #b9b9b9;
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+  color: var(--text);
+}
+
+.field select:focus-visible {
+  outline: 2px solid var(--cardinal);
+  outline-offset: 1px;
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  background: #f1f1f1;
+  color: var(--muted);
+}
+
+.price-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-input span {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ----- photo strip ----- */
+
+.photo-strip {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.photo-thumb,
+.photo-add {
+  position: relative;
+  width: 104px;
+}
+
+.photo-thumb img {
+  width: 104px;
+  height: 104px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
+.cover-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: var(--cardinal);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.photo-controls {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.photo-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #b9b9b9;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-button:hover:not(:disabled) {
+  background: #f1f1f1;
+}
+
+.photo-button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.photo-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.remove-photo {
+  color: var(--error);
+  font-weight: 700;
+}
+
+.photo-add label {
+  width: 104px;
+  height: 104px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #b9b9b9;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.photo-add label:hover {
+  border-color: var(--cardinal);
+  color: var(--cardinal);
+}
+
+.photo-add:focus-within label {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.photo-add-plus {
+  font-size: 28px;
+  line-height: 1;
+}
+
+/* ----- banners ----- */
+
+.locked-banner,
+.conflict-banner {
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+}
+
+.locked-banner {
+  background: #fff4cc;
+  color: #6b5200;
+}
+
+.conflict-banner {
+  background: #fdecee;
+  color: var(--error);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.conflict-banner[hidden],
+.photo-add[hidden] {
+  display: none;
+}
+
+.conflict-banner p {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Long words in a title or description must not widen the page. */
+.listing-form-card input,
+.listing-form-card textarea {
+  min-width: 0;
+}
+
+@media (max-width: 399px) {
+  .photo-thumb,
+  .photo-add,
+  .photo-add label {
+    width: 92px;
+  }
+
+  .photo-thumb img,
+  .photo-add label {
+    width: 92px;
+    height: 92px;
+  }
+}

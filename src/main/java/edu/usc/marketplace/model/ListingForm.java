@@ -21,4 +21,9 @@ public class ListingForm {
     public int version;   // the version the edit page loaded, for optimistic locking; unused when creating
     public List<Integer> keepPhotoIds = new ArrayList<>();   // existing photos to keep, when editing
     public List<UploadedFile> newPhotos = new ArrayList<>();
+    /**
+     * When editing, the display order of all photos: "keep:<photo id>" or "new:<index into newPhotos>", each kept
+     * photo and each new one exactly once. null means the kept photos first, then the new ones.
+     */
+    public List<String> photoOrder;
 }

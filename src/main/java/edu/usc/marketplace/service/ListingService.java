@@ -123,8 +123,11 @@ public class ListingService {
      *
      *   a. the listing must exist and not be removed by an administrator (404)
      *   b. only its seller may edit it; the seller id comes from the database, never the request (403)
-     *   c. only Available and Inactive listings can be edited (409)
-     *   d. keepPhotoIds must be photos of this listing, each once (400)
+     *   c. only Available and Inactive listings can be edited (409), and the form must be for the current version
+     *      (409): every save gives the photos new ids, so a page showing an older version would otherwise be
+     *      told its photo list is out of date instead of that the listing changed
+     *   d. keepPhotoIds must be photos of this listing, each once, and photoOrder (if sent) must name every
+     *      kept and new photo exactly once (400)
      *   e. the form and the photo count are checked (400)
      *   -- nothing has been written up to here --
      *   f. the new photos are saved
@@ -139,9 +142,12 @@ public class ListingService {
         if (existing.getStatus() == null || !existing.getStatus().isEditable()) {
             throw new ConflictException("This listing is " + statusLabel(existing.getStatus()) + ", so its details are locked.");
         }
+        if (form.version != existing.getVersion()) throw new ConflictException(CHANGED);   // checked again in the UPDATE
 
         List<ListingPhoto> current = photos.findByListing(id);
         List<String> keptFiles = keptFiles(current, form.keepPhotoIds);
+        int newCount = form.newPhotos == null ? 0 : form.newPhotos.size();
+        List<Slot> order = photoOrder(form.photoOrder, form.keepPhotoIds, newCount);
 
         Map<String, String> errors = new LinkedHashMap<>(Validator.validateListing(form));
         errors.putAll(Validator.validatePhotos(keptFiles.size(), form.newPhotos));
@@ -152,8 +158,7 @@ public class ListingService {
         listing.setSellerId(existing.getSellerId());
 
         List<String> saved = savePhotos(form.newPhotos);
-        List<String> allFiles = new ArrayList<>(keptFiles);
-        allFiles.addAll(saved);
+        List<String> allFiles = arrange(order, keptFiles, saved);
         try {
             inTransactionWithRetry("editing", c -> {
                 // Throwing inside the transaction rolls it back.
@@ -193,12 +198,65 @@ public class ListingService {
         List<String> kept = new ArrayList<>();
         Set<Integer> seen = new HashSet<>();
         for (Integer photoId : keepPhotoIds == null ? List.<Integer>of() : keepPhotoIds) {
-            if (photoId == null || !byId.containsKey(photoId) || !seen.add(photoId)) {
-                throw new ValidationException(Validator.FIX_FIELDS, Map.of("photos", PHOTOS_OUT_OF_DATE));
-            }
+            if (photoId == null || !byId.containsKey(photoId) || !seen.add(photoId)) throw photosOutOfDate();
             kept.add(byId.get(photoId));
         }
         return kept;
+    }
+
+    /** One place in the photo order: the index-th kept photo (in keepPhotoIds order) or the index-th new one. */
+    private record Slot(boolean kept, int index) {
+    }
+
+    /**
+     * Reads photoOrder ("keep:86", "new:0", ...). It must name every kept photo and every new photo exactly once;
+     * anything else means the page was showing an older photo list. Returns null when photoOrder was not sent.
+     */
+    private static List<Slot> photoOrder(List<String> tokens, List<Integer> keepPhotoIds, int newCount) {
+        if (tokens == null) return null;
+        List<Integer> keep = keepPhotoIds == null ? List.of() : keepPhotoIds;
+        if (tokens.size() != keep.size() + newCount) throw photosOutOfDate();
+
+        List<Slot> order = new ArrayList<>();
+        Set<Slot> seen = new HashSet<>();
+        for (String token : tokens) {
+            Slot slot = slot(token, keep, newCount);
+            if (slot == null || !seen.add(slot)) throw photosOutOfDate();
+            order.add(slot);
+        }
+        return order;   // as many slots as photos, none twice, so every photo is named exactly once
+    }
+
+    /** "keep:86" or "new:0" as a Slot, or null if it is not one of the photos being sent. */
+    private static Slot slot(String token, List<Integer> keep, int newCount) {
+        if (token == null) return null;
+        try {
+            if (token.startsWith("keep:")) {
+                int index = keep.indexOf(Integer.parseInt(token.substring("keep:".length())));
+                return index < 0 ? null : new Slot(true, index);
+            }
+            if (token.startsWith("new:")) {
+                int index = Integer.parseInt(token.substring("new:".length()));
+                return index < 0 || index >= newCount ? null : new Slot(false, index);
+            }
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        return null;
+    }
+
+    /** The file names in display order: as photoOrder says, or the kept photos followed by the new ones. */
+    private static List<String> arrange(List<Slot> order, List<String> keptFiles, List<String> newFiles) {
+        if (order == null) {
+            List<String> all = new ArrayList<>(keptFiles);
+            all.addAll(newFiles);
+            return all;
+        }
+        return order.stream().map(s -> s.kept() ? keptFiles.get(s.index()) : newFiles.get(s.index())).toList();
+    }
+
+    private static ValidationException photosOutOfDate() {
+        return new ValidationException(Validator.FIX_FIELDS, Map.of("photos", PHOTOS_OUT_OF_DATE));
     }
 
     /** The form's values in the form they are stored. Call only after Validator.validateListing found no errors. */

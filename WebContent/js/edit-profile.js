@@ -154,7 +154,8 @@
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (saveButton.disabled) return;
+    // access.js turned the button into "Verify your email" (Enter in a field still submits the form).
+    if (saveButton.dataset.blocked === "true" || saveButton.disabled) return;
     // Disable first, before anything is awaited, so a double click cannot send it twice.
     setSaving(true);
 
