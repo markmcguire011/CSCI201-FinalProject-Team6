@@ -174,7 +174,7 @@ class CreatingListingTest {
         assertEquals(0, listings.insertCalls);
     }
 
-    /** 7c: the seller is always the logged-in member. ListingForm has no seller field to override it. */
+    /** 7c-W5 (white box): the seller is always the logged-in member. ListingForm has no seller field to override it. */
     @Test
     void sellerComesFromTheMember() {
         Member other = new Member(12, "Ada", "ada@usc.edu", AccountType.ALUMNI, true);

@@ -324,7 +324,7 @@ class EditingListingTest {
 
     // ----- GET /api/listings/{id} -----
 
-    /** 7d: the owner may edit; anyone else, or a guest, sees the listing but may not. */
+    /** 7d-W7 (white box): the owner may edit; anyone else, or a guest, sees the listing but may not. */
     @Test
     void getListingTellsWhoMayEdit() {
         ListingDetail mine = service.getListing(sam, 31);
@@ -344,7 +344,7 @@ class EditingListingTest {
         assertFalse(service.getListing(sam, 31).editable());   // the owner, but locked
     }
 
-    /** 7d: the JSON has no buyer or proof of payment, and a listing removed by an admin is not found. */
+    /** 7d-W8 (white box): the JSON has no buyer or proof of payment, and a listing removed by an admin is not found. */
     @Test
     void getListingJsonHasNoPrivateFields() {
         String json = Json.gson().toJson(service.getListing(ada, 31));

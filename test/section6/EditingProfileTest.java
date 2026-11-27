@@ -141,7 +141,7 @@ class EditingProfileTest {
         assertTrue(errors.keySet().containsAll(List.of("fullName", "bio", "photo")));
     }
 
-    /** 6b white-box: files shorter than the JPG and PNG signatures are refused without an exception. */
+    /** 6b-W1 (white box): files shorter than the JPG and PNG signatures are refused without an exception. */
     @Test
     void emptyAndTinyFilesAreRejectedWithoutExceptions() {
         EditProfileForm form = validForm();
@@ -261,7 +261,7 @@ class EditingProfileTest {
         assertEquals(List.of(), publicFiles());
     }
 
-    /** 6b white-box: a file that starts like a JPG but is not a picture is a 400 on the photo, and nothing is saved. */
+    /** 6b-W2 (white box): a file that starts like a JPG but is not a picture is a 400 on the photo, and nothing is saved. */
     @Test
     void brokenJpgIsRejectedAsNotAPicture() throws IOException {
         FakeUserDAO users = new FakeUserDAO();
@@ -275,7 +275,7 @@ class EditingProfileTest {
         assertEquals(List.of("old.jpg"), publicFiles());
     }
 
-    /** 6b white-box: two saves with new photos at the same moment leave exactly one photo file, the stored one. */
+    /** 6b-W3 (white box): two saves with new photos at the same moment leave exactly one photo file, the stored one. */
     @Test
     void overlappingSavesLeaveNoUnusedFile() throws Exception {
         FakeUserDAO users = new FakeUserDAO();

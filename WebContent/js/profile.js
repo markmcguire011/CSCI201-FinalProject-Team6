@@ -83,7 +83,7 @@
     return item;
   }
 
-  function render(profile, me) {
+  function render(profile) {
     document.title = profile.fullName + " · USC Marketplace";
     showAvatar(document.getElementById("profile-photo"), profile.photoUrl, profile.fullName);
     document.getElementById("profile-name").textContent = profile.fullName;
@@ -143,7 +143,7 @@
 
     try {
       const profile = await Api.get("api/profile?id=" + encodeURIComponent(id), { silent: true });
-      render(profile, me);
+      render(profile);
     } catch (err) {
       if (err.status === 404) {
         showMissing();
