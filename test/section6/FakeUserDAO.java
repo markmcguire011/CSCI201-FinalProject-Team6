@@ -13,19 +13,33 @@ class FakeUserDAO extends UserDAO {
     int updateCalls;
     String savedName, savedBio, savedPhotoPath;
     RuntimeException failUpdate;   // when set, updateProfile throws it instead of saving
+    long updateDelayMillis;        // when set, updateProfile waits this long first, to make overlapping saves likely
 
     FakeUserDAO() {
         super(null);   // no database: every method the tests use is overridden
     }
 
     @Override
-    public User findById(int userId) {
+    public synchronized User findById(int userId) {
         findByIdCalls++;
         return users.get(userId);
     }
 
     @Override
     public void updateProfile(int userId, String fullName, String bio, String photoPath) {
+        if (updateDelayMillis > 0) {
+            try {
+                Thread.sleep(updateDelayMillis);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        synchronized (this) {
+            saveUpdate(userId, fullName, bio, photoPath);
+        }
+    }
+
+    private void saveUpdate(int userId, String fullName, String bio, String photoPath) {
         updateCalls++;
         if (failUpdate != null) throw failUpdate;
         savedName = fullName;

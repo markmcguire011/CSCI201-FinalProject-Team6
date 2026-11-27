@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import edu.usc.marketplace.dao.DataException;
 import edu.usc.marketplace.exception.ValidationException;
 import edu.usc.marketplace.model.AccountType;
 import edu.usc.marketplace.model.Listing;
@@ -20,6 +21,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -142,10 +144,11 @@ class CreatingListingTest {
         service.create(sam, form);
         assertEquals(1, transactions.calls);
         assertTrue(listings.insertedInTransaction);
-        assertTrue(photos.replacedInTransaction);
+        assertTrue(photos.insertedInTransaction);
+        assertEquals(0, photos.replaceCalls);   // create adds rows with insertAll, never replaceAll
     }
 
-    /** 7c-U4 */
+    /** 7c-U4: insertAll fails inside the transaction. */
     @Test
     void failedTransactionDeletesTheSavedFiles() throws IOException {
         ListingForm form = validForm();
@@ -177,5 +180,39 @@ class CreatingListingTest {
         Member other = new Member(12, "Ada", "ada@usc.edu", AccountType.ALUMNI, true);
         service.create(other, validForm());
         assertEquals(12, listings.inserted.getSellerId());
+    }
+
+    /** 7c-W2 (white box): a deadlock is retried, and the second try saves the listing with the same files. */
+    @Test
+    void deadlockIsRetried() throws IOException {
+        ListingForm form = validForm();
+        form.newPhotos = List.of(jpg("a.jpg"));
+        transactions.deadlocks = 1;
+
+        assertEquals(31, service.create(sam, form));
+        assertEquals(2, transactions.calls);
+        assertEquals(1, savedFiles().size());
+        assertEquals(savedFiles(), photos.filePaths);
+    }
+
+    /** 7c-W3 (white box): after MAX_ATTEMPTS deadlocks the error reaches the caller and the files are deleted. */
+    @Test
+    void repeatedDeadlocksGiveUp() throws IOException {
+        ListingForm form = validForm();
+        form.newPhotos = List.of(jpg("a.jpg"));
+        transactions.deadlocks = ListingService.MAX_ATTEMPTS;
+
+        assertThrows(DataException.class, () -> service.create(sam, form));
+        assertEquals(ListingService.MAX_ATTEMPTS, transactions.calls);
+        assertEquals(List.of(), savedFiles());
+    }
+
+    /** 7c-W4 (white box): any other database error is not retried. */
+    @Test
+    void otherDatabaseErrorsAreNotRetried() {
+        transactions.failWith = new DataException(new SQLException("Duplicate entry", "23000", 1062));
+
+        assertThrows(DataException.class, () -> service.create(sam, validForm()));
+        assertEquals(1, transactions.calls);
     }
 }

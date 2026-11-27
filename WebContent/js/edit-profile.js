@@ -147,15 +147,23 @@
   });
   bioInput.addEventListener("input", () => updateCounter(bioInput, MAX_BIO));
 
+  function setSaving(saving) {
+    saveButton.disabled = saving;
+    saveButton.textContent = saving ? "Saving…" : "Save";
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (saveButton.disabled) return;
+    // Disable first, before anything is awaited, so a double click cannot send it twice.
+    setSaving(true);
 
     // The photo was checked when it was chosen; check again in case the file changed on disk.
     if (chosenFile) {
       const problem = await photoError(chosenFile);
       if (problem) {
         showErrors({ photo: problem });
+        setSaving(false);
         return;
       }
     }
@@ -167,8 +175,6 @@
     if (chosenFile) data.append("photo", chosenFile, chosenFile.name);
 
     clearErrors();
-    saveButton.disabled = true;   // a double click cannot send it twice
-    saveButton.textContent = "Saving…";
     try {
       await Api.upload("api/profile", data, { silent: true });
       Toast.flash("Profile updated.");
@@ -176,8 +182,7 @@
     } catch (err) {
       const fields = err.fields || {};
       showErrors(fields, Object.keys(fields).length > 0 ? null : err.message);
-      saveButton.disabled = false;
-      saveButton.textContent = "Save";
+      setSaving(false);
     }
   });
 

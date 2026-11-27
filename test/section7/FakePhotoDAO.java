@@ -9,22 +9,29 @@ import java.util.List;
 class FakePhotoDAO extends PhotoDAO {
     Integer listingId;
     List<String> filePaths;
+    int insertCalls;
     int replaceCalls;
-    RuntimeException fail;            // when set, replaceAll throws it
-    FakeTransactions transactions;    // when set, records whether replaceAll ran inside a transaction
+    RuntimeException fail;            // when set, insertAll throws it
+    FakeTransactions transactions;    // when set, records whether insertAll ran inside a transaction
 
-    boolean replacedInTransaction;
+    boolean insertedInTransaction;
 
     FakePhotoDAO() {
         super(null);   // no database: every method the tests use is overridden
     }
 
     @Override
-    public void replaceAll(Connection c, int listingId, List<String> filePaths) {
-        replaceCalls++;
-        replacedInTransaction = transactions != null && transactions.running;
+    public void insertAll(Connection c, int listingId, List<String> filePaths) {
+        insertCalls++;
+        insertedInTransaction = transactions != null && transactions.running;
         if (fail != null) throw fail;
         this.listingId = listingId;
         this.filePaths = List.copyOf(filePaths);
+    }
+
+    /** Creating a listing must not call this (its DELETE caused deadlocks); counted so tests can check. */
+    @Override
+    public void replaceAll(Connection c, int listingId, List<String> filePaths) {
+        replaceCalls++;
     }
 }

@@ -43,6 +43,19 @@ public class PhotoDAO extends BaseDAO<ListingPhoto> {
         }
     }
 
+    /**
+     * Adds the photos of a listing that has none yet, in that order (sort_order 1, 2, ...). Used when a listing
+     * is created: unlike replaceAll it runs no DELETE first, because on rows that do not exist yet that DELETE
+     * locks the same gap of the index for every listing being created at the same moment, and the inserts then deadlock.
+     */
+    public void insertAll(Connection c, int listingId, List<String> filePaths) throws SQLException {
+        if (filePaths.size() > MAX_PHOTOS) throw new IllegalArgumentException("A listing can have at most 5 photos.");
+        for (int i = 0; i < filePaths.size(); i++) {
+            insert(c, "INSERT INTO listing_photos (listing_id, file_path, sort_order) VALUES (?, ?, ?)",
+                    listingId, filePaths.get(i), i + 1);
+        }
+    }
+
     public void replaceAll(int listingId, List<String> filePaths) {
         db.inTransaction(c -> {
             replaceAll(c, listingId, filePaths);

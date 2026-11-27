@@ -35,6 +35,13 @@ public class ProfileService {
     public static final String NOT_FOUND = "This profile could not be found.";
     public static final String FIX_FIELDS = Validator.FIX_FIELDS;
 
+    /** Profile saves of the same user run one at a time; different users rarely share a lock. */
+    private static final Object[] USER_LOCKS = new Object[64];
+
+    static {
+        for (int i = 0; i < USER_LOCKS.length; i++) USER_LOCKS[i] = new Object();
+    }
+
     private static final DateTimeFormatter JOIN_MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US);
 
     private final UserDAO users;
@@ -73,6 +80,14 @@ public class ProfileService {
         Map<String, String> errors = Validator.validateProfile(form);
         if (!errors.isEmpty()) throw new ValidationException(FIX_FIELDS, errors);
 
+        // Two saves by the same user at the same moment (two tabs, a double click) would both read the same
+        // old photo and both save a new one, leaving one new file that nothing points to. One at a time per user.
+        synchronized (lockFor(member.getId())) {
+            return saveProfile(member, form);
+        }
+    }
+
+    private PublicProfile saveProfile(Member member, EditProfileForm form) {
         int id = member.getId();
         User user = users.findById(id);
         if (user == null) throw new NotFoundException(NOT_FOUND);
@@ -113,6 +128,10 @@ public class ProfileService {
                 user.getCreatedAt() == null ? null : JOIN_MONTH.format(user.getCreatedAt()),
                 user.getBio(), ListingCard.photoUrl(user.getPhotoPath()), owner,
                 owner ? user.getEmail() : null, cards);
+    }
+
+    private static Object lockFor(int userId) {
+        return USER_LOCKS[Math.floorMod(userId, USER_LOCKS.length)];
     }
 
     /** The id from the address, or "not found" if it is not a positive whole number. */

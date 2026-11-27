@@ -1,5 +1,6 @@
 package edu.usc.marketplace.service;
 
+import edu.usc.marketplace.dao.DataException;
 import edu.usc.marketplace.dao.Database;
 import edu.usc.marketplace.dao.ListingDAO;
 import edu.usc.marketplace.dao.PhotoDAO;
@@ -15,10 +16,12 @@ import edu.usc.marketplace.storage.FileStorageService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,12 +33,17 @@ import javax.imageio.IIOException;
  *   1. The form and photos are checked first; an invalid form writes no file and runs no SQL.
  *   2. The photos are saved, in the order the seller chose.
  *   3. The listing and its photo rows are saved in one transaction, so a listing never exists without
- *      its photos. If anything fails, the transaction is rolled back and the saved files are deleted.
+ *      its photos. A transaction MySQL stops with a deadlock is tried again (see saveListing). If it still
+ *      fails, the transaction is rolled back and the saved files are deleted.
  *
  * The seller is always the logged-in member, never someone named in the form.
  */
 public class ListingService {
     private static final Logger LOG = Logger.getLogger(ListingService.class.getName());
+
+    /** How many times a transaction stopped by a deadlock is tried in all. */
+    public static final int MAX_ATTEMPTS = 4;
+    private static final int MYSQL_DEADLOCK = 1213;
 
     /** Runs statements as one transaction. The app uses Database.inTransaction; tests run the work directly. */
     @FunctionalInterface
@@ -80,11 +88,7 @@ public class ListingService {
         List<String> saved = savePhotos(form.newPhotos);
         int id;
         try {
-            id = transactions.inTransaction(c -> {
-                int newId = listings.insert(c, listing);
-                photos.replaceAll(c, newId, saved);
-                return newId;
-            });
+            id = saveListing(listing, saved);
         } catch (RuntimeException e) {
             deleteQuietly(saved);
             throw e;
@@ -92,6 +96,46 @@ public class ListingService {
 
         // TODO section 12 (Live feed): broadcast listing.created so open Browse pages show the new listing.
         return id;
+    }
+
+    /**
+     * Inserts the listing and its photo rows in one transaction.
+     *
+     * The photo rows are added with PhotoDAO.insertAll, not replaceAll: replaceAll's DELETE on a brand-new
+     * listing made simultaneous creates deadlock. If MySQL still stops a transaction with a deadlock (error 1213),
+     * it rolls the transaction back completely and asks for it to be restarted, so it is tried again, up to
+     * MAX_ATTEMPTS times, after a short random pause. Any other error is not retried.
+     */
+    private int saveListing(Listing listing, List<String> savedPhotos) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return transactions.inTransaction(c -> {
+                    int newId = listings.insert(c, listing);
+                    photos.insertAll(c, newId, savedPhotos);
+                    return newId;
+                });
+            } catch (DataException e) {
+                if (attempt >= MAX_ATTEMPTS || !isDeadlock(e)) throw e;
+                LOG.info("Deadlock while creating a listing, trying again (attempt " + (attempt + 1) + " of " + MAX_ATTEMPTS + ").");
+                pauseBeforeRetry(attempt, e);
+            }
+        }
+    }
+
+    /** MySQL's "Deadlock found when trying to get lock; try restarting transaction". */
+    static boolean isDeadlock(DataException e) {
+        SQLException sql = e.getSqlException();
+        return sql != null && (sql.getErrorCode() == MYSQL_DEADLOCK || "40001".equals(sql.getSQLState()));
+    }
+
+    /** 20 to 80 ms times the attempt number, so the retries of requests that collided do not collide again. */
+    private static void pauseBeforeRetry(int attempt, DataException cause) {
+        try {
+            Thread.sleep(ThreadLocalRandom.current().nextLong(20, 81) * attempt);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw cause;
+        }
     }
 
     /**

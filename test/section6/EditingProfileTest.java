@@ -274,4 +274,30 @@ class EditingProfileTest {
         assertEquals(0, users.updateCalls);
         assertEquals(List.of("old.jpg"), publicFiles());
     }
+
+    /** 6b white-box: two saves with new photos at the same moment leave exactly one photo file, the stored one. */
+    @Test
+    void overlappingSavesLeaveNoUnusedFile() throws Exception {
+        FakeUserDAO users = new FakeUserDAO();
+        ProfileService service = serviceWithOldPhoto(users);
+        users.updateDelayMillis = 200;   // without the per-user lock, both saves read old.jpg before either updates
+
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+            List<java.util.concurrent.Future<?>> saves = new java.util.ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                saves.add(pool.submit(() -> {
+                    start.await();
+                    return service.updateProfile(tommy, new EditProfileForm("Tommy", null, new UploadedFile("me.jpg", realJpg()), false));
+                }));
+            }
+            start.countDown();
+            for (java.util.concurrent.Future<?> f : saves) f.get();
+        } finally {
+            pool.shutdown();
+        }
+        assertEquals(2, users.updateCalls);
+        assertEquals(List.of(users.savedPhotoPath), publicFiles());
+    }
 }
