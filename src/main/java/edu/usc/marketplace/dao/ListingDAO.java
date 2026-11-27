@@ -70,7 +70,15 @@ public class ListingDAO extends BaseDAO<Listing> {
 
     /** Creates an Available listing and returns its id. */
     public int insert(Listing l) {
-        return insert("INSERT INTO listings (seller_id, title, category, price, item_condition, course_code, pickup_spot, description) "
+        return db.inTransaction(c -> insert(c, l));
+    }
+
+    /**
+     * Creates a listing inside a transaction (e.g. together with its photos) and returns its id.
+     * status and version come from the table's defaults: AVAILABLE and 1.
+     */
+    public int insert(Connection c, Listing l) throws SQLException {
+        return insert(c, "INSERT INTO listings (seller_id, title, category, price, item_condition, course_code, pickup_spot, description) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 l.getSellerId(), l.getTitle(), l.getCategory(), l.getPrice(), l.getItemCondition(),
                 l.getCourseCode(), l.getPickupSpot(), l.getDescription());

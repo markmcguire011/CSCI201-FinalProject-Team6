@@ -260,4 +260,18 @@ class EditingProfileTest {
         assertNull(users.savedPhotoPath);
         assertEquals(List.of(), publicFiles());
     }
+
+    /** 6b white-box: a file that starts like a JPG but is not a picture is a 400 on the photo, and nothing is saved. */
+    @Test
+    void brokenJpgIsRejectedAsNotAPicture() throws IOException {
+        FakeUserDAO users = new FakeUserDAO();
+        ProfileService service = serviceWithOldPhoto(users);
+        UploadedFile broken = new UploadedFile("me.jpg", new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3, 4, 5});
+
+        ValidationException e = assertThrows(ValidationException.class,
+                () -> service.updateProfile(tommy, new EditProfileForm("Tommy", null, broken, false)));
+        assertEquals(Map.of("photo", "Photo must be a JPG or PNG file."), e.getFieldErrors());
+        assertEquals(0, users.updateCalls);
+        assertEquals(List.of("old.jpg"), publicFiles());
+    }
 }

@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.imageio.IIOException;
+
 /**
  * Viewing and editing a profile (section 6).
  *
@@ -31,7 +33,7 @@ public class ProfileService {
     private static final Logger LOG = Logger.getLogger(ProfileService.class.getName());
 
     public static final String NOT_FOUND = "This profile could not be found.";
-    public static final String FIX_FIELDS = "Fix the fields marked in red and try again.";
+    public static final String FIX_FIELDS = Validator.FIX_FIELDS;
 
     private static final DateTimeFormatter JOIN_MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US);
 
@@ -134,8 +136,9 @@ public class ProfileService {
     private String savePhoto(EditProfileForm form) {
         try (InputStream in = form.photo.stream()) {
             return storage.saveImage(form.photo.fileName(), in);
-        } catch (ValidationException e) {
-            // The file starts like a JPG or PNG but is not a picture that can be opened.
+        } catch (ValidationException | IIOException e) {
+            // The file starts like a JPG or PNG but is not a picture that can be opened. saveImage reports that as a
+            // ValidationException, or as an IIOException when ImageIO fails partway through the file.
             throw new ValidationException(FIX_FIELDS, Map.of("photo", Validator.PHOTO_TYPE_ERROR));
         } catch (IOException e) {
             throw new UncheckedIOException("Could not save the profile photo", e);

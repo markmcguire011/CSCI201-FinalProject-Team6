@@ -35,6 +35,9 @@ public final class Validator {
     public static final String TARGET_ERROR = "Choose a listing or user to report";
 
     // ----- Profile (section 6) and listings (section 7) -----
+    /** The summary above a form whose fields have errors. */
+    public static final String FIX_FIELDS = "Fix the fields marked in red and try again.";
+
     public static final int MAX_BIO = 300;
     public static final int MAX_TITLE = 80;
     public static final int MAX_PRICE = 10_000;
