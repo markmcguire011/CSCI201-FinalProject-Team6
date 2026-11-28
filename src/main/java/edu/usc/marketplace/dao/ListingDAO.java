@@ -22,8 +22,8 @@ public class ListingDAO extends BaseDAO<Listing> {
     private static final String SELECT =
             "SELECT l.*, u.full_name AS seller_name, "
             + "(SELECT p.file_path FROM listing_photos p WHERE p.listing_id = l.listing_id ORDER BY p.sort_order LIMIT 1) AS cover_photo, "
-            + "r.avg_stars AS seller_rating "
-            + "FROM listings l "
+            + "r.avg_stars AS seller_rating ";
+    private static final String FROM = "FROM listings l "
             + "JOIN users u ON u.user_id = l.seller_id "
             + "LEFT JOIN (SELECT reviewed_user_id, AVG(stars) AS avg_stars FROM reviews "
             + "           WHERE deleted_by_admin = FALSE GROUP BY reviewed_user_id) r ON r.reviewed_user_id = l.seller_id ";
@@ -65,7 +65,15 @@ public class ListingDAO extends BaseDAO<Listing> {
 
     /** Includes listings removed by an administrator; callers decide whether to show them. */
     public Listing findById(int listingId) {
-        return queryOne(SELECT + "WHERE l.listing_id = ?", listingId);
+        try (Connection c = db.getConnection()) {
+            return findById(c, listingId);
+        } catch (SQLException e) {
+            throw new DataException(e);
+        }
+    }
+
+    public Listing findById(Connection c, int listingId) throws SQLException {
+        return queryOne(c, SELECT + FROM + "WHERE l.listing_id = ?", listingId);
     }
 
     /** Creates an Available listing and returns its id. */
@@ -78,10 +86,12 @@ public class ListingDAO extends BaseDAO<Listing> {
      * status and version come from the table's defaults: AVAILABLE and 1.
      */
     public int insert(Connection c, Listing l) throws SQLException {
-        return insert(c, "INSERT INTO listings (seller_id, title, category, price, item_condition, course_code, pickup_spot, description) "
+        int id = insert(c, "INSERT INTO listings (seller_id, title, category, price, item_condition, course_code, pickup_spot, description) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 l.getSellerId(), l.getTitle(), l.getCategory(), l.getPrice(), l.getItemCondition(),
                 l.getCourseCode(), l.getPickupSpot(), l.getDescription());
+        recordEvent(c, id, "ListingCreated");
+        return id;
     }
 
     /** Saves an edit by the seller. Only Available or Inactive listings can be edited. */
@@ -94,12 +104,14 @@ public class ListingDAO extends BaseDAO<Listing> {
      * nothing, if the version, the seller or the status does not match or an administrator removed the listing.
      */
     public boolean update(Connection c, Listing l, int expectedVersion) throws SQLException {
-        return update(c, "UPDATE listings SET title = ?, category = ?, price = ?, item_condition = ?, course_code = ?, "
+        boolean changed = update(c, "UPDATE listings SET title = ?, category = ?, price = ?, item_condition = ?, course_code = ?, "
                         + "pickup_spot = ?, description = ?, version = version + 1, last_activity_at = NOW() "
                         + "WHERE listing_id = ? AND seller_id = ? AND version = ? "
                         + "AND status IN ('AVAILABLE', 'INACTIVE') AND deleted_by_admin = FALSE",
                 l.getTitle(), l.getCategory(), l.getPrice(), l.getItemCondition(), l.getCourseCode(),
                 l.getPickupSpot(), l.getDescription(), l.getId(), l.getSellerId(), expectedVersion) == 1;
+        if (changed) recordEvent(c, l.getId(), "ListingUpdated");
+        return changed;
     }
 
     /** Seller changes the status (Available, Pending, Inactive). Returns false if the version or seller does not match. */
@@ -114,7 +126,7 @@ public class ListingDAO extends BaseDAO<Listing> {
      * so two Mark as Sold requests for the same listing cannot both succeed.
      */
     public Listing findForUpdate(Connection c, int listingId) throws SQLException {
-        return queryOne(c, SELECT + "WHERE l.listing_id = ? FOR UPDATE", listingId);
+        return queryOne(c, SELECT + FROM + "WHERE l.listing_id = ? FOR UPDATE OF l", listingId);
     }
 
     /** Mark as Sold, step 2: saves the buyer and the proof of payment. */
@@ -126,22 +138,34 @@ public class ListingDAO extends BaseDAO<Listing> {
 
     /** Administrator removes a listing. It stays in the database (soft delete) so reports and reviews still point to it. */
     public boolean deleteByAdmin(Connection c, int listingId) throws SQLException {
-        return update(c, "UPDATE listings SET deleted_by_admin = TRUE, version = version + 1 WHERE listing_id = ?", listingId) == 1;
+        boolean changed = update(c, "UPDATE listings SET deleted_by_admin = TRUE, version = version + 1 WHERE listing_id = ?", listingId) == 1;
+        if (changed) recordEvent(c, listingId, "ListingStatusChanged");
+        return changed;
+    }
+
+    private void recordEvent(Connection c, int id, String type) throws SQLException {
+        update(c, "INSERT INTO listing_events (listing_id,version,event_type) SELECT listing_id,version,? FROM listings WHERE listing_id=?", type, id);
     }
 
     public boolean deleteByAdmin(int listingId) {
-        return update("UPDATE listings SET deleted_by_admin = TRUE, version = version + 1 WHERE listing_id = ?", listingId) == 1;
+        return db.inTransaction(c -> deleteByAdmin(c, listingId));
     }
 
     /** The Browse feed: 20 listings per page, newest first unless another sort is chosen. */
     public List<Listing> search(SearchQuery q) {
-        StringBuilder sql = new StringBuilder(SELECT).append("WHERE l.deleted_by_admin = FALSE ");
+        return searchPage(q, null).listings();
+    }
+
+    public record Page(List<Listing> listings, java.util.Set<Integer> savedIds, long totalCount, int pageNumber, boolean hasNextPage) {}
+
+    public Page searchPage(SearchQuery q, Integer viewerId) {
+        StringBuilder sql = new StringBuilder(FROM).append("WHERE l.deleted_by_admin = FALSE ");
         List<Object> args = new ArrayList<>();
 
         sql.append(q.showSold ? "AND l.status IN ('AVAILABLE', 'PENDING', 'SOLD') " : "AND l.status IN ('AVAILABLE', 'PENDING') ");
-        if (q.keyword != null) {
-            sql.append("AND (l.title LIKE ? OR l.description LIKE ? OR l.course_code LIKE ?) ");
-            String pattern = likePattern(q.keyword);
+        for (String word : q.keyword == null ? new String[0] : q.keyword.split("\\s+")) {
+            sql.append("AND (LOWER(l.title) LIKE LOWER(?) OR LOWER(l.description) LIKE LOWER(?) OR LOWER(l.course_code) LIKE LOWER(?)) ");
+            String pattern = likePattern(word);
             args.add(pattern);
             args.add(pattern);
             args.add(pattern);
@@ -171,29 +195,49 @@ public class ListingDAO extends BaseDAO<Listing> {
             args.add(q.postedWithinDays);
         }
 
+        String countSql = "SELECT COUNT(*) " + sql;
         // The sort column is chosen from a fixed list, never copied from the request.
         switch (q.sort) {
-            case "price_low" -> sql.append("ORDER BY l.price ASC, l.listing_id DESC ");
-            case "price_high" -> sql.append("ORDER BY l.price DESC, l.listing_id DESC ");
+            case "price_low" -> sql.append("ORDER BY l.price ASC, l.created_at DESC, l.listing_id DESC ");
+            case "price_high" -> sql.append("ORDER BY l.price DESC, l.created_at DESC, l.listing_id DESC ");
             default -> sql.append("ORDER BY l.created_at DESC, l.listing_id DESC ");
         }
         sql.append("LIMIT ? OFFSET ?");
-        args.add(SearchQuery.PAGE_SIZE);
-        args.add((q.page - 1) * SearchQuery.PAGE_SIZE);
-
-        return queryList(sql.toString(), args.toArray());
+        return db.inTransaction(c -> {
+            long total = queryLong(c, countSql, args.toArray());
+            int page = (int) Math.min(q.page, Math.max(1, (total + SearchQuery.PAGE_SIZE - 1) / SearchQuery.PAGE_SIZE));
+            long offset = (long) (page - 1) * SearchQuery.PAGE_SIZE;
+            args.add(0, viewerId);
+            args.add(SearchQuery.PAGE_SIZE);
+            args.add(offset);
+            String select = SELECT + ", EXISTS (SELECT 1 FROM saved_listings s WHERE s.user_id = ? "
+                    + "AND s.listing_id = l.listing_id) AS is_saved ";
+            List<Listing> rows = new ArrayList<>();
+            java.util.Set<Integer> saved = new java.util.HashSet<>();
+            try (var ps = c.prepareStatement(select + sql)) {
+                bind(ps, args.toArray());
+                try (var rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Listing listing = mapRow(rs);
+                        rows.add(listing);
+                        if (rs.getBoolean("is_saved")) saved.add(listing.getId());
+                    }
+                }
+            }
+            return new Page(rows, saved, total, page, offset + rows.size() < total);
+        });
     }
 
     /** A user's profile page. includeHidden is true when sellers look at their own profile. */
     public List<Listing> findBySeller(int sellerId, boolean includeHidden) {
         String visible = includeHidden ? "" : "AND l.status IN ('AVAILABLE', 'PENDING', 'SOLD') ";
-        return queryList(SELECT + "WHERE l.seller_id = ? AND l.deleted_by_admin = FALSE " + visible
+        return queryList(SELECT + FROM + "WHERE l.seller_id = ? AND l.deleted_by_admin = FALSE " + visible
                 + "ORDER BY l.created_at DESC", sellerId);
     }
 
     /** Available listings with no activity for more than the given number of days (used by the expiry job). */
     public List<Listing> findStale(int days) {
-        return queryList(SELECT + "WHERE l.status = 'AVAILABLE' AND l.deleted_by_admin = FALSE "
+        return queryList(SELECT + FROM + "WHERE l.status = 'AVAILABLE' AND l.deleted_by_admin = FALSE "
                 + "AND l.last_activity_at < NOW() - INTERVAL ? DAY", days);
     }
 

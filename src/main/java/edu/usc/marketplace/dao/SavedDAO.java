@@ -37,7 +37,15 @@ public class SavedDAO extends BaseDAO<Listing> {
     }
 
     public boolean isSaved(int userId, int listingId) {
-        return queryLong("SELECT COUNT(*) FROM saved_listings WHERE user_id = ? AND listing_id = ?", userId, listingId) > 0;
+        try (Connection c = db.getConnection()) {
+            return isSaved(c, userId, listingId);
+        } catch (SQLException e) {
+            throw new DataException(e);
+        }
+    }
+
+    public boolean isSaved(Connection c, int userId, int listingId) throws SQLException {
+        return queryLong(c, "SELECT COUNT(*) FROM saved_listings WHERE user_id = ? AND listing_id = ?", userId, listingId) > 0;
     }
 
     /** The Saved page, most recently saved first. Listings removed by an administrator are left out. */

@@ -104,6 +104,11 @@ public class FileStorageService {
         if (p.startsWith(publicDir) && !p.equals(publicDir)) Files.deleteIfExists(p);
     }
 
+    /** Roll back a staged upload if the listing transaction fails. */
+    public void deleteProof(String name) throws IOException {
+        Files.deleteIfExists(find(privateDir, name, "File not found."));
+    }
+
     public String contentType(Path file) {
         String n = file.getFileName().toString();
         if (n.endsWith(".png")) return "image/png";

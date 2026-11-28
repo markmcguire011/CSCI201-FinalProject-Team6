@@ -152,3 +152,32 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (user_id)
 );
+
+-- Durable section 8 events. Reapply this file to an existing marketplace database.
+CREATE TABLE IF NOT EXISTS listing_events (
+  event_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL,
+  version INT NOT NULL,
+  event_type ENUM('ListingCreated','ListingUpdated','ListingStatusChanged','BuyerReviewRequested') NOT NULL,
+  recipient_id INT,
+  delivered BOOLEAN NOT NULL DEFAULT FALSE,
+  attempts INT NOT NULL DEFAULT 0,
+  next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_listing_event (listing_id, version, event_type),
+  INDEX idx_listing_delivery (delivered,next_attempt_at),
+  FOREIGN KEY (listing_id) REFERENCES listings(listing_id),
+  FOREIGN KEY (recipient_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE IF NOT EXISTS payment_proofs (
+  file_id INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id INT NOT NULL UNIQUE,
+  uploader_id INT NOT NULL,
+  storage_key VARCHAR(255) NOT NULL UNIQUE,
+  detected_type VARCHAR(40) NOT NULL,
+  byte_size INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(listing_id),
+  FOREIGN KEY (uploader_id) REFERENCES users(user_id)
+);

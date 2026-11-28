@@ -25,6 +25,11 @@ public class Listing extends BaseEntity {
     private Double sellerRating;   // average stars, null if no reviews
     private List<String> photos;   // all photos in order, filled in by the listing details page
 
+    public boolean visibleTo(Member viewer) {
+        return !deletedByAdmin && (status.isPublic() || (viewer != null &&
+                (viewer.owns(sellerId) || viewer.getRole() == Role.ADMIN)));
+    }
+
     public int getSellerId() {
         return sellerId;
     }

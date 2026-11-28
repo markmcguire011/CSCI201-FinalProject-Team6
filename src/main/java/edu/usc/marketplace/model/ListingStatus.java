@@ -4,6 +4,14 @@ package edu.usc.marketplace.model;
 public enum ListingStatus {
     AVAILABLE, PENDING, SOLD, INACTIVE, EXPIRED;
 
+    public boolean canMessage() {
+        return this == AVAILABLE || this == PENDING;
+    }
+
+    public boolean isPublic() {
+        return canMessage() || this == SOLD;
+    }
+
     public boolean isEditable() {
         return this == AVAILABLE || this == INACTIVE;
     }

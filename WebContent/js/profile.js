@@ -61,7 +61,10 @@
     }
 
     const body = el("div", "card-body");
-    body.appendChild(el("p", "card-title", listing.title));
+    const open = el("button", "listing-open", listing.title);
+    open.onclick = () => ListingPopup.open(listing.id, open);
+    body.appendChild(open);
+    if (listing.status === "SOLD") item.classList.add("sold");
     const priceRow = el("p", "card-price-row");
     priceRow.appendChild(el("span", "card-price", price(listing.price)));
     if (STATUS_LABELS[listing.status]) {
@@ -79,7 +82,6 @@
     }
     item.appendChild(body);
 
-    // TODO section 8 (Listing pop-up): clicking the card opens the listing pop-up.
     return item;
   }
 
@@ -154,5 +156,6 @@
     }
   }
 
+  window.addEventListener("marketplace-change", load);
   document.addEventListener("DOMContentLoaded", load);
 })();

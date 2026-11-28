@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browse · USC Marketplace</title>
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/forms.css">
+  <link rel="stylesheet" href="css/listings.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+  <main class="page">
+    <h1>Browse listings</h1>
+    <div class="browse">
+      <form id="search" class="filters">
+        <label>Search listings<input name="keyword" type="search" placeholder="Item or course code"></label>
+        <button class="btn btn-primary">Search</button>
+        <details open><summary>Filters</summary>
+          <label>Category<select name="category"><option value="">All categories</option>
+            <option>Textbooks</option><option>Electronics</option><option>Furniture</option><option>Clothing</option>
+            <option>Tickets</option><option>Services</option><option>Food</option></select></label>
+          <label>Minimum price ($)<input type="number" name="minPrice" min="0" max="10000"></label>
+          <label>Maximum price ($)<input type="number" name="maxPrice" min="0" max="10000"></label>
+          <label>Minimum seller rating<select name="minRating"><option value="">Any rating</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+          <label>Date posted<select name="days"><option value="">Any time</option><option value="1">Last 24 hours</option>
+            <option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></label>
+          <label><input type="checkbox" name="showSold" value="true"> Show sold items</label>
+          <button type="button" id="clear">Clear filters</button>
+        </details>
+        <label>Sort by<select name="sort"><option value="newest">Newest</option><option value="price_low">Price, low to high</option>
+          <option value="price_high">Price, high to low</option></select></label>
+      </form>
+      <section aria-label="Search results" id="results" tabindex="-1">
+        <p id="summary" role="status"></p><button hidden id="retry">Retry</button>
+        <div id="cards" class="feed"></div>
+        <nav aria-label="Results pages"><button id="prev" disabled>Previous</button> <button id="next" disabled>Next</button></nav>
+      </section>
+    </div>
+  </main>
+  <script src="js/toast.js"></script><script src="js/api.js"></script><script src="js/nav.js"></script>
+  <script src="js/access.js"></script><script src="js/report.js"></script>
+  <script src="js/listing-popup.js"></script><script src="js/browse.js"></script>
+</body>
+</html>
