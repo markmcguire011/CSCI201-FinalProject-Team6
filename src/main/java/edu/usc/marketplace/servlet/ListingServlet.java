@@ -3,6 +3,8 @@ package edu.usc.marketplace.servlet;
 import edu.usc.marketplace.exception.AuthException;
 import edu.usc.marketplace.exception.NotFoundException;
 import edu.usc.marketplace.exception.ValidationException;
+import edu.usc.marketplace.dao.ListingActions;
+import edu.usc.marketplace.model.ListingStatus;
 import edu.usc.marketplace.model.ListingForm;
 import edu.usc.marketplace.model.Member;
 import edu.usc.marketplace.model.UploadedFile;
@@ -37,7 +39,8 @@ import java.util.Map;
  *
  * AuthFilter has already refused guests, unverified and suspended accounts for both POSTs (SELL and EDIT_OWN).
  *
- * Every other request answers 404 for now: GET /api/listings (search) belongs to the Browse section.
+ * GET the collection to search, or /{id}/popup for the personalized dialog.
+ * POST /{id}/status (multipart), /{id}/saved (desired state), or /{id}/conversation.
  */
 @WebServlet({"/api/listings", "/api/listings/*"})
 @MultipartConfig(maxFileSize = 5 * 1024 * 1024, maxRequestSize = 26 * 1024 * 1024, fileSizeThreshold = 0)
@@ -52,6 +55,9 @@ public class ListingServlet extends BaseServlet {
 
     private transient ListingService listings;
 
+    private transient ListingBrowse browse;
+    private transient ListingActions actions;
+
     /** Used by Tomcat. */
     public ListingServlet() {
     }
@@ -64,22 +70,54 @@ public class ListingServlet extends BaseServlet {
     @Override
     public void init() {
         if (listings == null) listings = new ListingService();
+        browse = new ListingBrowse();
+        actions = new ListingActions();
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        if (isCollection(req)) throw new NotFoundException(NOT_FOUND);   // search: the Browse section
-        // Browsing: AuthFilter did not look the user up, so this comes from the session. Only the id is used.
-        Member viewer = SessionUtil.visitor(req) instanceof Member m ? m : null;
+        if (isCollection(req)) {
+            sendJson(resp, browse.search(req));
+            return;
+        }
+        if (req.getPathInfo().matches("/[0-9]+/popup")) {
+            sendJson(resp, browse.popup(req, pathId(req)));
+            return;
+        }
+        // Refresh the database role before allowing access to a hidden listing.
+        Member viewer = SessionUtil.loadVisitor(req, new edu.usc.marketplace.dao.UserDAO()) instanceof Member m ? m : null;
         sendJson(resp, listings.getListing(viewer, listingId(req)));
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
         boolean creating = isCollection(req);
-        int id = creating ? 0 : listingId(req);
+
         if (!(SessionUtil.visitor(req) instanceof Member member)) throw new AuthException(SessionUtil.LOGIN_REQUIRED);
 
+        if (!creating && req.getPathInfo().matches("/[0-9]+/(status|saved|conversation)")) {
+            int id = pathId(req);
+            String action = req.getPathInfo().substring(req.getPathInfo().lastIndexOf('/') + 1);
+            switch (action) {
+                case "saved" -> {
+                    SaveRequest body = readJson(req, SaveRequest.class);
+                    if (body.isSaved == null) throw new ValidationException("Choose a saved state.");
+                    sendJson(resp, Map.of("isSaved", actions.setSaved(member.getId(), id, body.isSaved)));
+                }
+                case "conversation" -> sendJson(resp, Map.of("conversationId", actions.startConversation(member.getId(), id)));
+                case "status" -> {
+                    List<UploadedFile> proof = readPhotos(req, "proof");
+                    if (proof.size() > 1) throw new ValidationException("Choose one payment proof.");
+                    ListingStatus status;
+                    try { status = ListingStatus.valueOf(String.valueOf(req.getParameter("status")).trim().toUpperCase(java.util.Locale.ROOT)); }
+                    catch (IllegalArgumentException e) { throw new ValidationException("Choose a seller status."); }
+                    sendJson(resp, actions.change(member, id, status, version(req),
+                            ListingBrowse.number(req, "buyerId", 1, Integer.MAX_VALUE), proof.isEmpty() ? null : proof.get(0)));
+                }
+            }
+            return;
+        }
+        int id = creating ? 0 : listingId(req);
         // Read the files first: if Tomcat refused the upload as too large, getParts() says so,
         // while getParameter() would just return null and every field would look empty.
         List<UploadedFile> photos = readPhotos(req, creating ? "photos" : "newPhotos");
@@ -114,6 +152,8 @@ public class ListingServlet extends BaseServlet {
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) {
         throw new NotFoundException(NOT_FOUND);
     }
+
+    private record SaveRequest(Boolean isSaved) {}
 
     /** /api/listings or /api/listings/ (no id). */
     private static boolean isCollection(HttpServletRequest req) {
@@ -167,6 +207,7 @@ public class ListingServlet extends BaseServlet {
             parts = req.getParts();
         } catch (IllegalStateException e) {
             if (!isUploadTooLarge(e)) throw e;
+            if ("proof".equals(partName)) throw ListingBrowse.invalid("proof", "Payment proof must be 5 MB or smaller.");
             String message = isOneFileTooLarge(e) ? Validator.PHOTO_SIZE_ERROR : TOO_LARGE_IN_TOTAL;
             throw new ValidationException(Validator.FIX_FIELDS, Map.of("photos", message));
         }

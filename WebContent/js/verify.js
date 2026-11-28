@@ -13,6 +13,9 @@
   const intro = document.getElementById("verify-intro");
   let timer = null;
 
+  const next = new URLSearchParams(location.search).get("next");
+  const destination = next && /^(index|profile)\.html(?:\?[^#\\]*)?$/.test(next) ? next : Nav.PAGES.browse;
+
   function showError(message) {
     errorNote.textContent = message;
     errorNote.hidden = false;
@@ -91,7 +94,7 @@
 
   function finish() {
     Toast.flash("Email verified. Messaging, saving and selling are unlocked.");
-    location.href = Nav.PAGES.browse;
+    location.href = destination;
   }
 
   form.addEventListener("submit", async (event) => {
@@ -139,7 +142,7 @@
     try {
       const status = await Api.get("api/verify", { silent: true });
       if (status.verified) {
-        location.href = Nav.PAGES.browse;
+        location.href = destination;
         return;
       }
       intro.textContent = "Enter the 6-digit code we emailed to " + status.email + ". It expires after 15 minutes.";
@@ -148,7 +151,7 @@
     } catch (err) {
       if (err.status === 401) {
         Toast.flash("Log in to verify your email.", "error");
-        location.href = Nav.PAGES.login + "?next=verify.html";
+        location.href = Nav.PAGES.login + "?next=" + encodeURIComponent("verify.html" + location.search);
       } else {
         showError(err.message);
       }

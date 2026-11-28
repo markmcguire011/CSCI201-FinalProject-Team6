@@ -360,8 +360,7 @@
       if (!editing) {
         await Api.upload("api/listings", formData(), { silent: true });
         Toast.flash("Your listing is live.");
-        // TODO dev plan step 7 (Browse): go to the Browse page instead, once it exists.
-        location.href = Nav.PAGES.profile;
+        location.href = Nav.PAGES.browse;
         return;
       }
       const listing = await Api.upload("api/listings/" + encodeURIComponent(listingId), formData(), { silent: true });

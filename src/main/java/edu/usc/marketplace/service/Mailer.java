@@ -84,13 +84,22 @@ public final class Mailer {
      * Tomcat log. A failed email never stops the request, because the user can ask for a new code.
      */
     public boolean send(String to, String subject, String text) {
+        return send(to, subject, text, null);
+    }
+
+    public boolean send(String to, String subject, String text, String deliveryKey) {
         if (session == null) {
             LOG.info("Email is not set up (mail.host is missing from config.properties), so this email was not sent."
                     + "\n  To: " + to + "\n  Subject: " + subject + "\n  " + text.replace("\n", "\n  "));
             return false;
         }
         try {
-            MimeMessage message = new MimeMessage(session);
+            MimeMessage message = new MimeMessage(session) {
+                @Override protected void updateMessageID() throws MessagingException {
+                    if (deliveryKey == null) super.updateMessageID();
+                    else setHeader("Message-ID", "<" + deliveryKey + "@usc-marketplace>");
+                }
+            };
             message.setFrom(new InternetAddress(from));
             message.setRecipient(Message.RecipientType.TO, new InternetAddress(to));
             message.setSubject(subject, "UTF-8");

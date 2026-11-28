@@ -3,6 +3,7 @@ package edu.usc.marketplace.dao;
 import edu.usc.marketplace.exception.ConflictException;
 import edu.usc.marketplace.model.Review;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -64,7 +65,15 @@ public class ReviewDAO extends BaseDAO<Review> {
     }
 
     public int count(int reviewedUserId) {
-        return (int) queryLong("SELECT COUNT(*) FROM reviews WHERE reviewed_user_id = ? AND deleted_by_admin = FALSE", reviewedUserId);
+        try (Connection c = db.getConnection()) {
+            return count(c, reviewedUserId);
+        } catch (SQLException e) {
+            throw new DataException(e);
+        }
+    }
+
+    public int count(Connection c, int reviewedUserId) throws SQLException {
+        return (int) queryLong(c, "SELECT COUNT(*) FROM reviews WHERE reviewed_user_id = ? AND deleted_by_admin = FALSE", reviewedUserId);
     }
 
     /** Administrator removes a review (soft delete). */

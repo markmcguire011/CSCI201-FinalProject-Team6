@@ -51,6 +51,8 @@ public final class AccessPolicy {
             // Reading listings is browsing. POST /api/listings creates one; anything else changes an existing one.
             case "listings":
                 if (reading) return Action.BROWSE;
+                if (posting && parts.length == 3 && parts[2].equals("saved")) return Action.SAVE;
+                if (posting && parts.length == 3 && parts[2].equals("conversation")) return Action.MESSAGE;
                 return posting && parts.length == 1 ? Action.SELL : Action.EDIT_OWN;
 
             // Anyone can view a profile; changing one is editing your own.

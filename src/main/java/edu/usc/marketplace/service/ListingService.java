@@ -105,7 +105,6 @@ public class ListingService {
             throw e;
         }
 
-        // TODO section 12 (Live feed): broadcast listing.created so open Browse pages show the new listing.
         return id;
     }
 
@@ -115,6 +114,9 @@ public class ListingService {
      */
     public ListingDetail getListing(Member viewer, int id) {
         Listing listing = findVisible(id);
+        if (!listing.visibleTo(viewer)) {
+            throw new NotFoundException(NOT_FOUND);
+        }
         return ListingDetail.from(listing, photos.findByListing(id), viewer);
     }
 
@@ -176,7 +178,6 @@ public class ListingService {
 
         // TODO section 10 (Saved): if the price went down (existing.getPrice() > listing.getPrice()),
         //      notify the members who saved this listing.
-        // TODO section 12 (Live feed): broadcast listing.updated so open pages show the change.
         return getListing(member, id);
     }
 

@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 public class AppStartup implements ServletContextListener {
     private static final Logger LOG = Logger.getLogger(AppStartup.class.getName());
     private Database db;
+    private ListingJobs listingJobs;
 
     @Override
     public void contextInitialized(ServletContextEvent event) {
@@ -61,6 +62,7 @@ public class AppStartup implements ServletContextListener {
         try {
             Path folder = Paths.get(uploadDir);
             FileStorageService.init(new FileStorageService(folder));
+            listingJobs = new ListingJobs(db);
             LOG.info("Uploads are saved in " + folder.toAbsolutePath());
         } catch (IOException e) {
             throw new IllegalStateException("Could not create the upload folder " + uploadDir + ". Check upload.dir.", e);
@@ -69,6 +71,7 @@ public class AppStartup implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent event) {
+        if (listingJobs != null) listingJobs.close();
         if (db != null) db.shutdown();
         // Unregister the MySQL driver this application loaded, so Tomcat can unload it cleanly.
         ClassLoader appLoader = Thread.currentThread().getContextClassLoader();

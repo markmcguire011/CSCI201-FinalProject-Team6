@@ -30,7 +30,15 @@ public class PhotoDAO extends BaseDAO<ListingPhoto> {
     }
 
     public List<ListingPhoto> findByListing(int listingId) {
-        return queryList("SELECT * FROM listing_photos WHERE listing_id = ? ORDER BY sort_order", listingId);
+        try (Connection c = db.getConnection()) {
+            return findByListing(c, listingId);
+        } catch (SQLException e) {
+            throw new DataException(e);
+        }
+    }
+
+    public List<ListingPhoto> findByListing(Connection c, int listingId) throws SQLException {
+        return queryList(c, "SELECT * FROM listing_photos WHERE listing_id = ? ORDER BY sort_order", listingId);
     }
 
     /** Replaces all photos of a listing with the given files, in that order (used when a listing is created or edited). */

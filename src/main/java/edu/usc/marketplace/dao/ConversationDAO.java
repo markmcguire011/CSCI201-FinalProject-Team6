@@ -38,8 +38,12 @@ public class ConversationDAO extends BaseDAO<Conversation> {
      * INSERT IGNORE plus the UNIQUE (listing_id, buyer_id) rule means two quick clicks still make one row.
      */
     public int findOrCreate(int listingId, int buyerId, int sellerId) {
-        update("INSERT IGNORE INTO conversations (listing_id, buyer_id, seller_id) VALUES (?, ?, ?)", listingId, buyerId, sellerId);
-        return (int) queryLong("SELECT conversation_id FROM conversations WHERE listing_id = ? AND buyer_id = ?", listingId, buyerId);
+        return db.inTransaction(c -> findOrCreate(c, listingId, buyerId, sellerId));
+    }
+
+    public int findOrCreate(Connection c, int listingId, int buyerId, int sellerId) throws SQLException {
+        update(c, "INSERT IGNORE INTO conversations (listing_id, buyer_id, seller_id) VALUES (?, ?, ?)", listingId, buyerId, sellerId);
+        return (int) queryLong(c, "SELECT conversation_id FROM conversations WHERE listing_id = ? AND buyer_id = ?", listingId, buyerId);
     }
 
     /** One conversation as seen by viewerId (the other person's name, unread count). */
@@ -55,7 +59,16 @@ public class ConversationDAO extends BaseDAO<Conversation> {
 
     /** People who messaged the seller about a listing: the choices in the Mark as Sold dialog. */
     public List<Conversation> findBuyersForListing(int listingId, int sellerId) {
-        return queryList(base() + "WHERE c.listing_id = ? AND c.seller_id = ? ORDER BY c.last_message_at DESC",
+        try (Connection c = db.getConnection()) {
+            return findBuyersForListing(c, listingId, sellerId);
+        } catch (SQLException e) {
+            throw new DataException(e);
+        }
+    }
+
+    public List<Conversation> findBuyersForListing(Connection c, int listingId, int sellerId) throws SQLException {
+        return queryList(c, base() + "WHERE c.listing_id = ? AND c.seller_id = ? AND EXISTS (SELECT 1 FROM messages m "
+                + "WHERE m.conversation_id=c.conversation_id AND m.sender_id=c.buyer_id) ORDER BY c.last_message_at DESC",
                 sellerId, sellerId, sellerId, listingId, sellerId);
     }
 
