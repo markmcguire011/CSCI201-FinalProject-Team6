@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sell · USC Marketplace</title>
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/forms.css">
+  <link rel="stylesheet" href="css/profile.css">
+  <link rel="stylesheet" href="css/listing-form.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main class="page">
+    <p class="page-note" id="form-loading" hidden>Loading listing…</p>
+
+    <div class="empty-note" id="form-message" hidden>
+      <p id="form-message-text"></p>
+      <a class="btn btn-secondary" id="form-message-link" href="index.html">Back to Browse</a>
+    </div>
+
+    <form id="listing-form" class="form-card listing-form-card" novalidate hidden>
+      <h1 id="form-title">Sell something to Trojans</h1>
+      <p class="form-intro" id="form-intro">Students and alumni will see it on Browse and on your profile.</p>
+
+      <p class="locked-banner" id="locked-banner" role="status" hidden></p>
+      <div class="conflict-banner" id="conflict-banner" role="alert" hidden>
+        <p id="conflict-text"></p>
+        <button type="button" class="btn btn-secondary" id="reload-button">Reload</button>
+      </div>
+
+      <div class="field" id="photos-field">
+        <span class="field-label" id="photos-label">Photos <span class="label-note">(up to 5; the first is the cover)</span></span>
+        <ul class="photo-strip" id="photo-strip" aria-labelledby="photos-label">
+          <li class="photo-add" id="photo-add">
+            <label for="photo-input">
+              <span aria-hidden="true" class="photo-add-plus">+</span>
+              <span>Add photos</span>
+            </label>
+            <input class="visually-hidden" type="file" id="photo-input" accept="image/jpeg,image/png" multiple>
+          </li>
+        </ul>
+        <p class="field-hint">JPG or PNG, up to 5 MB each.</p>
+      </div>
+
+      <div class="field">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" required>
+        <p class="counter" id="title-counter">0/80</p>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category" name="category" required>
+            <option value="">Choose…</option>
+            <option value="TEXTBOOKS">Textbooks</option>
+            <option value="ELECTRONICS">Electronics</option>
+            <option value="FURNITURE">Furniture</option>
+            <option value="CLOTHING">Clothing</option>
+            <option value="TICKETS">Tickets</option>
+            <option value="SERVICES">Services</option>
+            <option value="FOOD">Food</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="condition">Condition</label>
+          <select id="condition" name="condition" required>
+            <option value="">Choose…</option>
+            <option value="NEW">New</option>
+            <option value="LIKE_NEW">Like new</option>
+            <option value="GOOD">Good</option>
+            <option value="FAIR">Fair</option>
+            <option value="NOT_APPLICABLE">Not applicable</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="price">Price</label>
+          <div class="price-input">
+            <span aria-hidden="true">$</span>
+            <input type="text" id="price" name="price" inputmode="numeric" autocomplete="off" required aria-describedby="price-hint">
+          </div>
+          <p class="field-hint" id="price-hint">Whole dollars, 0 to 10,000.</p>
+        </div>
+
+        <div class="field">
+          <label for="courseCode">Course code <span class="label-note">(optional)</span></label>
+          <input type="text" id="courseCode" name="courseCode" placeholder="e.g. CSCI 201" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="pickupSpot">Pickup spot</label>
+        <input type="text" id="pickupSpot" name="pickupSpot" placeholder="e.g. Leavey Library entrance" required>
+        <p class="counter" id="pickupSpot-counter">0/60</p>
+      </div>
+
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" required></textarea>
+        <p class="counter" id="description-counter">0/1000</p>
+      </div>
+
+      <div class="form-buttons">
+        <button type="button" class="btn btn-secondary" id="cancel-button">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submit-button" data-requires="SELL">Post listing</button>
+      </div>
+    </form>
+  </main>
+
+  <script src="js/toast.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/access.js"></script>
+  <script src="js/listing-form.js"></script>
+</body>
+</html>

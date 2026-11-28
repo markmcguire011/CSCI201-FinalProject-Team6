@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile · USC Marketplace</title>
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/forms.css">
+  <link rel="stylesheet" href="css/profile.css">
+</head>
+<body>
+  <header id="site-nav"></header>
+
+  <main class="page" id="profile-page" aria-live="polite">
+    <p class="page-note" id="profile-loading">Loading profile…</p>
+
+    <div id="profile" hidden>
+      <section class="profile-header">
+        <div class="profile-photo" id="profile-photo"></div>
+        <div class="profile-info">
+          <h1 class="profile-name" id="profile-name"></h1>
+          <p class="profile-meta" id="profile-meta"></p>
+          <!-- TODO section 11 (Reviews): show the rating here, e.g. "4.5 (6 reviews)". -->
+          <p class="profile-bio" id="profile-bio" hidden></p>
+          <div class="profile-actions" id="profile-actions"></div>
+        </div>
+      </section>
+
+      <section class="profile-listings" aria-labelledby="listings-title">
+        <h2 class="section-title" id="listings-title">Listings</h2>
+        <p class="empty-note" id="listings-empty" hidden>No listings yet.</p>
+        <ul class="feed profile-feed" id="listings"></ul>
+      </section>
+    </div>
+
+    <div class="empty-note" id="profile-missing" hidden>
+      <p>This profile could not be found.</p>
+      <a class="btn btn-secondary" id="back-to-browse" href="index.html">Back to Browse</a>
+    </div>
+  </main>
+
+  <script src="js/toast.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/access.js"></script>
+  <script src="js/report.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>

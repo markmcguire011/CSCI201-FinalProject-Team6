@@ -173,7 +173,8 @@ public abstract class BaseServlet extends HttpServlet {
         sendJson(resp, status, body);
     }
 
-    private static boolean isUploadTooLarge(Throwable e) {
+    /** True if Tomcat refused an upload because it is larger than the servlet's @MultipartConfig allows. */
+    protected static boolean isUploadTooLarge(Throwable e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             if (t.getClass().getSimpleName().contains("SizeLimitExceeded")) return true;
         }

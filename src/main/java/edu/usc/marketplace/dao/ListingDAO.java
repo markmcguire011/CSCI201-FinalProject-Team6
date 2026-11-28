@@ -70,7 +70,15 @@ public class ListingDAO extends BaseDAO<Listing> {
 
     /** Creates an Available listing and returns its id. */
     public int insert(Listing l) {
-        return insert("INSERT INTO listings (seller_id, title, category, price, item_condition, course_code, pickup_spot, description) "
+        return db.inTransaction(c -> insert(c, l));
+    }
+
+    /**
+     * Creates a listing inside a transaction (e.g. together with its photos) and returns its id.
+     * status and version come from the table's defaults: AVAILABLE and 1.
+     */
+    public int insert(Connection c, Listing l) throws SQLException {
+        return insert(c, "INSERT INTO listings (seller_id, title, category, price, item_condition, course_code, pickup_spot, description) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 l.getSellerId(), l.getTitle(), l.getCategory(), l.getPrice(), l.getItemCondition(),
                 l.getCourseCode(), l.getPickupSpot(), l.getDescription());
@@ -78,7 +86,15 @@ public class ListingDAO extends BaseDAO<Listing> {
 
     /** Saves an edit by the seller. Only Available or Inactive listings can be edited. */
     public boolean update(Listing l, int expectedVersion) {
-        return update("UPDATE listings SET title = ?, category = ?, price = ?, item_condition = ?, course_code = ?, "
+        return db.inTransaction(c -> update(c, l, expectedVersion));
+    }
+
+    /**
+     * Saves an edit by the seller inside a transaction (e.g. together with its photos). Returns false, changing
+     * nothing, if the version, the seller or the status does not match or an administrator removed the listing.
+     */
+    public boolean update(Connection c, Listing l, int expectedVersion) throws SQLException {
+        return update(c, "UPDATE listings SET title = ?, category = ?, price = ?, item_condition = ?, course_code = ?, "
                         + "pickup_spot = ?, description = ?, version = version + 1, last_activity_at = NOW() "
                         + "WHERE listing_id = ? AND seller_id = ? AND version = ? "
                         + "AND status IN ('AVAILABLE', 'INACTIVE') AND deleted_by_admin = FALSE",
